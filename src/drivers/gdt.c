@@ -1,0 +1,30 @@
+#include "gdt.h"
+
+static inline void disable_interrupts() { asm volatile("cli"); }
+
+enum { GDT_COUNT = 3 };
+static GDTEntry gdt[GDT_COUNT];
+static GDTPtr gdt_ptr;
+
+static GDTEntry make_entry(uint32_t base, uint32_t limit, uint8_t access,
+                           uint8_t flags) {
+  GDTEntry e;
+  e.limit_low = limit & 0xFFFF;
+  e.base_low = base & 0xFFFF;
+  e.base_middle = (base >> 16) & 0xFF;
+  e.access = access;
+  e.granularity = ((limit >> 16) & 0x0F) | (flags & 0xF0);
+  e.base_high = (base >> 24) & 0xFF;
+  return e;
+}
+void gdt_init() {
+  disable_interrupts();
+  gdt[GDT_NULL] = make_entry(0, 0, 0, 0);
+  gdt[GDT_CODE] = make_entry(0, 0, 0x9A, 0x20);
+  gdt[GDT_DATA] = make_entry(0, 0, 0x92, 0x00);
+
+  gdt_ptr.limit = sizeof(gdt) - 1;
+  gdt_ptr.address = &gdt[0];
+
+  load_gdt(&gdt_ptr);
+}

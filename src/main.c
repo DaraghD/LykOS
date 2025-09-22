@@ -1,3 +1,4 @@
+#include "drivers/gdt.h"
 #include "drivers/serial.h"
 #include "klib/kstring.h"
 #include "vendor/font.h"
@@ -7,6 +8,61 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
+// probs should be moved somewhere else
+#define GREEN 0x00FF00
+#define BLUE 0x0000FF
+#define RED 0xFF0000
+
+uint32_t hsv_to_rgb_int(uint16_t h, uint8_t s, uint8_t v) {
+  // h: 0–359, s/v: 0–255
+  uint8_t region = h / 60; // sector 0–5
+  uint16_t remainder = (h % 60) * 255 / 60;
+
+  uint16_t p = (v * (255 - s)) / 255;
+  uint16_t q = (v * (255 - (s * remainder) / 255)) / 255;
+  uint16_t t = (v * (255 - (s * (255 - remainder)) / 255)) / 255;
+
+  uint8_t r, g, b;
+  switch (region) {
+  case 0:
+    r = v;
+    g = t;
+    b = p;
+    break;
+  case 1:
+    r = q;
+    g = v;
+    b = p;
+    break;
+  case 2:
+    r = p;
+    g = v;
+    b = t;
+    break;
+  case 3:
+    r = p;
+    g = q;
+    b = v;
+    break;
+  case 4:
+    r = t;
+    g = p;
+    b = v;
+    break;
+  case 5:
+    r = v;
+    g = p;
+    b = q;
+    break;
+  default:
+    r = 0;
+    g = 0;
+    b = 0;
+    break;
+  }
+  return (r << 16) | (g << 8) | b;
+}
 
 // Set the base revision to 3, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -128,15 +184,35 @@ void draw_char(char c, size_t px, size_t py, uint32_t color) {
   }
 }
 
+void draw_char_scaled(char c, size_t px, size_t py, uint32_t color,
+                      size_t scale) {
+  if (c < 0)
+    return;
+
+  for (size_t row = 0; row < 8; row++) {
+    uint8_t bits = font8x8_basic[(size_t)c][row];
+    for (size_t col = 0; col < 8; col++) {
+      if (bits & (1 << col)) {
+        // Draw a scale x scale block instead of a single pixel
+        for (size_t dy = 0; dy < scale; dy++) {
+          for (size_t dx = 0; dx < scale; dx++) {
+            put_pixel(px + col * scale + dx, py + row * scale + dy, color);
+          }
+        }
+      }
+    }
+  }
+}
 void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
+  uint8_t scale = 3;
   size_t orig_x = px;
   while (*str) {
     if (*str == '\n') {
       px = orig_x;
       py += 8;
     } else {
-      draw_char(*str, px, py, color);
-      px += 8;
+      draw_char_scaled(*str, px, py, color, scale);
+      px += 8 * scale;
     }
     str++;
   }
@@ -146,13 +222,18 @@ void draw_kstring(kstring string, size_t px, size_t py, uint32_t color) {
 }
 
 void clear_screen(limine_framebuffer *fb_ptr, uint32_t color) {
-  volatile uint32_t *buffer = (volatile uint32_t *)fb_ptr->address;
+  uint32_t *buffer = (uint32_t *)fb_ptr->address;
   size_t total_pixel = fb_ptr->height * fb_ptr->width;
-  for (size_t i = 0; i < total_pixel; i++)
+  for (size_t i = total_pixel / 2; i < total_pixel; i++)
     buffer[i] = color;
 }
 void keyboard_loop() {}
 
+uint16_t read_cs() {
+  uint16_t cs;
+  __asm__ volatile("mov %%cs, %0" : "=r"(cs));
+  return cs;
+}
 // The following will be our kernel's entry point.
 // If renaming kmain() to something else, make sure to change the
 // linker script accordingly.
@@ -172,25 +253,35 @@ void kmain(void) {
   limine_framebuffer *framebuffer =
       framebuffer_request.response->framebuffers[0];
 
-#define GREEN 0x00FF000
+  gdt_init();
 
-  draw_string("Hello Mars, from Lykos", 0, 0, GREEN);
+  uint32_t center = framebuffer->width / 2;
+  center -= 100;
+  draw_string("Hello Mars, from LykOS", center, 0, BLUE);
 
   char height_buf[128];
   kstring height_str = KSTRING(height_buf, 128);
   APPEND_STRL(&height_str, "HEIGHT: ", framebuffer->height);
-  draw_kstring(height_str, 0, 8, GREEN);
+  draw_kstring(height_str, center, 24, RED);
 
   char width_buf[128];
   kstring width_string = KSTRING(width_buf, 128);
   APPEND_STRL(&width_string, "WIDTH: ", framebuffer->width);
-  draw_kstring(width_string, 0, 16, GREEN);
+  APPEND_STRL(&width_string, "  BPP: ", framebuffer->bpp);
+  draw_kstring(width_string, center, 48, GREEN);
 
-  serial_write(width_string.buf);
-  serial_write(height_str.buf);
+  uint64_t colour = 0x000000;
+  uint64_t hue = 0;
+  for (;;) {
+    colour = hsv_to_rgb_int(hue, 255, 255);
+    clear_screen(framebuffer, colour);
+    serial_write(width_string.buf);
 
-  // main loop -> replace with multi-tasking or some scheduler idk
+    hue++;
+    if (hue >= 360)
+      hue = 0;
+  }
+
   keyboard_loop();
-
   hcf();
 }
