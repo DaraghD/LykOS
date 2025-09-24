@@ -8,6 +8,7 @@ static GDTPtr gdt_ptr;
 
 static GDTEntry make_entry(uint32_t base, uint32_t limit, uint8_t access,
                            uint8_t flags) {
+  // base and limit ignored in 64-bit;
   GDTEntry e;
   e.limit_low = limit & 0xFFFF;
   e.base_low = base & 0xFFFF;
@@ -17,8 +18,10 @@ static GDTEntry make_entry(uint32_t base, uint32_t limit, uint8_t access,
   e.base_high = (base >> 24) & 0xFF;
   return e;
 }
+
 void gdt_init() {
   disable_interrupts();
+  // use macros to make it more clear whats being defined here
   gdt[GDT_NULL] = make_entry(0, 0, 0, 0);
   gdt[GDT_CODE] = make_entry(0, 0, 0x9A, 0x20);
   gdt[GDT_DATA] = make_entry(0, 0, 0x92, 0x00);

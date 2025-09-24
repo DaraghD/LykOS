@@ -1,5 +1,5 @@
 #include "serial.h"
-#include "io.h"
+#include "arch/x86_64/io.h"
 #include <stdint.h>
 
 #define COM1 0x3F8 // Base I/O port for COM1

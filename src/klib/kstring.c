@@ -1,5 +1,6 @@
 #include "kstring.h"
-#include <stdbool.h>
+#include <stdarg.h>
+#include <stdint.h>
 
 void append(kstring *b, char *src, int len) {
   int avail = b->cap - b->len;

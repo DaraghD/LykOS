@@ -9,4 +9,5 @@
 - GNUmake
 - xorriso
 - qemu
+- nasm
 

@@ -2,4 +2,6 @@ bin/
 obj/
 iso_root/
 image.iso
+.cache
+compile_commands.json
 
