@@ -1,4 +1,5 @@
 #include "gdt.h"
+#include "drivers/serial.h"
 
 static inline void disable_interrupts() { asm volatile("cli"); }
 
@@ -20,6 +21,7 @@ static GDTEntry make_entry(uint32_t base, uint32_t limit, uint8_t access,
 }
 
 void gdt_init() {
+  serial_writeln("Initialising GDT");
   disable_interrupts();
   // use macros to make it more clear whats being defined here
   gdt[GDT_NULL] = make_entry(0, 0, 0, 0);
@@ -29,5 +31,6 @@ void gdt_init() {
   gdt_ptr.limit = sizeof(gdt) - 1;
   gdt_ptr.address = &gdt[0];
 
+  serial_write("Loading GDT");
   load_gdt(&gdt_ptr);
 }

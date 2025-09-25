@@ -26,6 +26,7 @@ typedef struct {
 
 void set_idt_gate(uint32_t index, uint64_t handler, uint16_t selector, uint8_t flags);
 void idt_init();
+void idt_remap_init();
 
 // ISRs
 // Using GCC interrupt attribute
@@ -33,3 +34,4 @@ __attribute__((interrupt))
 void isr_divide_error(interrupt_frame *frame);
 __attribute__((interrupt))
 void test_isr(interrupt_frame *frame);
+__attribute__((interrupt)) void isr_keyboard(interrupt_frame *frame);

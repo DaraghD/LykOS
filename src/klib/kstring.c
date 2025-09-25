@@ -1,5 +1,6 @@
 #include "kstring.h"
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 void append(kstring *b, char *src, int len) {
@@ -12,6 +13,14 @@ void append(kstring *b, char *src, int len) {
   b->error |= amount < len;
 }
 
+void append_char(kstring *b, char c) {
+  if (b->len >= b->cap) {
+    b->error = true;
+    return;
+  }
+  b->buf[b->len] = c;
+  b->len += 1;
+}
 void append_long(kstring *b, long x) {
   char tmp[32];
   char *end = tmp + sizeof(tmp);

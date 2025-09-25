@@ -1,4 +1,5 @@
 #include "idt.h"
+#include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -8,7 +9,7 @@ static IDTPointer idt_ptr;
 
 #define RING_0_64_PRESENT_GATE 0x8E
 #define KERNEL_CODE_SEGMENT 0x08
-// handler is a function pointer
+
 void set_idt_gate(uint32_t index, uint64_t handler_ptr, uint16_t selector,
                   uint8_t flags) {
 
@@ -29,6 +30,7 @@ static inline bool are_interrupts_enabled() {
   return flags & (1 << 9);
 }
 void idt_init() {
+  serial_writeln("Initialising interrupt descriptor table");
   idt_ptr.limit = (sizeof(IDTEntry) * 256) - 1;
   idt_ptr.base = (uint64_t)&idt;
 
@@ -38,20 +40,23 @@ void idt_init() {
   set_idt_gate(60, (uint64_t)test_isr, KERNEL_CODE_SEGMENT,
                RING_0_64_PRESENT_GATE);
 
+  set_idt_gate(0x21, (uint64_t)isr_ps2_keyboard, KERNEL_CODE_SEGMENT,
+               RING_0_64_PRESENT_GATE);
+
   asm volatile("lidt %0" : : "m"(idt_ptr));
   if (are_interrupts_enabled()) {
-    serial_write("Interrupts enabled");
+    serial_writeln("Interrupts enabled");
   } else {
-    serial_write("Interrutps not enabled");
+    serial_writeln("Interrutps not enabled");
   }
 }
 
 __attribute__((interrupt)) void isr_divide_error(interrupt_frame *frame) {
   (void)frame;
-  serial_write("Divide by zero!\n");
+  serial_writeln("Divide by zero!");
 }
 
 __attribute__((interrupt)) void test_isr(interrupt_frame *frame) {
   (void)frame;
-  serial_write("Test interrupt");
+  serial_writeln("Test interrupt");
 }

@@ -34,3 +34,8 @@ void serial_write(const char *s) {
     serial_write_char(*s++);
   }
 }
+
+void serial_writeln(const char *s) {
+  serial_write(s);
+  serial_write("\r\n");
+}

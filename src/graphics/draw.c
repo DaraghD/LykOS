@@ -34,9 +34,35 @@ static void hcf(void) {
     asm("hlt");
   }
 }
-static uint8_t m_scale = 1;
 
+uint8_t m_scale = 1;
+uint64_t x_pos = 0;
+uint64_t y_pos = 0;
 void set_draw_scale(uint8_t scale) { m_scale = scale; }
+
+void draw_char_term(char c, uint32_t color) {
+  draw_char(c, x_pos, y_pos, color);
+  // advance the cursor
+  x_pos += 8 * m_scale;
+  // if next position is greater than the width
+  // takes into account how big the START of the next character will be
+  if (x_pos > (get_framebuffer()->width) - (7 * m_scale)) {
+    y_pos += 8 * m_scale;
+    x_pos = 0;
+  }
+}
+
+void draw_string_term(const char *str, uint32_t color) {
+  size_t orig_x = x_pos;
+  while (*str) {
+    if (*str == '\n') {
+      x_pos = orig_x;
+    } else {
+      draw_char_term(*str, color);
+    }
+    str++;
+  }
+}
 
 void init_graphics() {
   // Ensure the bootloader actually understands our base revision (see spec).
@@ -70,16 +96,7 @@ void put_pixel(size_t x, size_t y, size_t color) {
 }
 
 void draw_char(char c, size_t px, size_t py, uint32_t color) {
-  if (c < 0)
-    return;
-  for (size_t row = 0; row < 8; row++) {
-    uint8_t bits = font8x8_basic[(size_t)c][row];
-    for (size_t col = 0; col < 8; col++) {
-      if (bits & (1 << col)) {
-        put_pixel(px + col, py + row, color);
-      }
-    }
-  }
+  draw_char_scaled(c, px, py, color, m_scale);
 }
 
 void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
@@ -87,7 +104,7 @@ void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
   while (*str) {
     if (*str == '\n') {
       px = orig_x;
-      py += 8;
+      py += 8 * m_scale; // bug
     } else {
       draw_char_scaled(*str, px, py, color, m_scale);
       px += 8 * m_scale;
