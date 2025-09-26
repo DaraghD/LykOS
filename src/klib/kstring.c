@@ -35,3 +35,16 @@ void append_long(kstring *b, long x) {
   append(b, beg, end - beg);
 }
 void append_int(kstring *b, int x) { append_long(b, (long)x); }
+
+bool kstrncmp(kstring *ks, const char *cmp, int len) {
+  if (ks->len < len) {
+    return false;
+  }
+  const char *buf = ks->buf;
+  for (int i = 0; i < len; i++) {
+    if (buf[i] != cmp[i]) {
+      return false;
+    }
+  }
+  return true;
+}

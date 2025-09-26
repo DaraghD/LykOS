@@ -9,8 +9,14 @@
 
 #define DEFAULT_TERMINAL_SCALE 2
 // stores input for commands
-static char line_buf[256];
-static kstring line_content = KSTRING(line_buf, 256);
+static char command_buf[256];
+static kstring command_content = KSTRING(command_buf, 256);
+
+// TODO: backspace to remove characters will probs need a seperate line buffer
+// some rerendering
+
+//  static char line_buf[256];
+//  static kstring line_content = KSTRING(command_buf, 256);
 
 void terminal_init() {
   serial_writeln("Starting terminal..");
@@ -27,10 +33,10 @@ void terminal_process_input(uint8_t sc) {
       y_pos += 8 * m_scale;
       x_pos = 0;
 
-      shell_execute(&line_content);
+      shell_execute(&command_content);
 
-      memset(line_content.buf, 0, line_content.len);
-      line_content.len = 0;
+      memset(command_content.buf, 0, command_content.len);
+      command_content.len = 0;
 
       draw_string_term("StarShell>", RED);
       return;
@@ -39,7 +45,7 @@ void terminal_process_input(uint8_t sc) {
       qemu_shutdown();
     }
     serial_write_char(c);
-    append_char(&line_content, c);
+    append_char(&command_content, c);
     draw_char_term(c, GREEN);
   }
   // }

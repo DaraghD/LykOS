@@ -1,3 +1,4 @@
+#pragma once
 #include "arch/x86_64/io.h"
 
 static inline void qemu_shutdown(){

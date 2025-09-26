@@ -1,4 +1,5 @@
 #include "draw.h"
+#include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "vendor/font.h"
 #include "vendor/limine.h"
@@ -35,11 +36,16 @@ static void hcf(void) {
   }
 }
 
+static uint32_t width;
+static uint32_t height;
+
 uint8_t m_scale = 1;
 uint64_t x_pos = 0;
 uint64_t y_pos = 0;
 void set_draw_scale(uint8_t scale) { m_scale = scale; }
 
+// draws character using global x_pos and y_pos positions
+// probably should be moved into terminal code
 void draw_char_term(char c, uint32_t color) {
   draw_char(c, x_pos, y_pos, color);
   // advance the cursor
@@ -52,6 +58,7 @@ void draw_char_term(char c, uint32_t color) {
   }
 }
 
+// TODO: move this and draw_char_term to terminal code
 void draw_string_term(const char *str, uint32_t color) {
   size_t orig_x = x_pos;
   while (*str) {
@@ -77,6 +84,8 @@ void init_graphics() {
     serial_write("Failed to receive framebuffer");
     hcf();
   }
+  width = get_framebuffer()->width;
+  height = get_framebuffer()->height;
 }
 
 limine_framebuffer *get_framebuffer() {
@@ -100,11 +109,14 @@ void draw_char(char c, size_t px, size_t py, uint32_t color) {
 }
 
 void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
-  size_t orig_x = px;
   while (*str) {
+    if (px > (width - (7 * m_scale))) {
+      px = 0;
+      py += 8 * m_scale;
+    }
     if (*str == '\n') {
-      px = orig_x;
       py += 8 * m_scale; // bug
+      px = 0;
     } else {
       draw_char_scaled(*str, px, py, color, m_scale);
       px += 8 * m_scale;
@@ -113,8 +125,8 @@ void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
   }
 }
 
-void draw_kstring(kstring string, size_t px, size_t py, uint32_t color) {
-  draw_string(string.buf, px, py, color);
+void draw_kstring(kstring *string, size_t px, size_t py, uint32_t color) {
+  draw_string(string->buf, px, py, color);
 }
 
 void clear_screen(limine_framebuffer *fb_ptr, uint32_t color) {
@@ -192,4 +204,18 @@ uint32_t hsv_to_rgb_int(uint16_t h, uint8_t s, uint8_t v) {
     break;
   }
   return (r << 16) | (g << 8) | b;
+}
+
+void infinite_rainbow(limine_framebuffer *framebuffer) {
+  uint64_t colour;
+  uint64_t hue = 0;
+  // rainbowww
+  for (;;) {
+    colour = hsv_to_rgb_int(hue, 255, 255);
+    clear_screen(framebuffer, colour);
+    hue++;
+    if (hue >= 360)
+      hue = 0;
+    keyboard_process();
+  }
 }
