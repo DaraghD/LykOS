@@ -1,8 +1,10 @@
 #include "draw.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
+#include "terminal.h"
 #include "vendor/font.h"
 #include "vendor/limine.h"
+#include <stddef.h>
 #include <stdint.h>
 
 // Finally, define the start and end markers for the Limine requests.
@@ -46,8 +48,8 @@ void set_draw_scale(uint8_t scale) { m_scale = scale; }
 
 // draws character using global x_pos and y_pos positions
 // probably should be moved into terminal code
-void draw_char_term(char c, uint32_t color) {
-  draw_char(c, x_pos, y_pos, color);
+void draw_char_term(char c) {
+  draw_char(c, x_pos, y_pos, term_color);
   // advance the cursor
   x_pos += 8 * m_scale;
   // if next position is greater than the width
@@ -59,13 +61,13 @@ void draw_char_term(char c, uint32_t color) {
 }
 
 // TODO: move this and draw_char_term to terminal code
-void draw_string_term(const char *str, uint32_t color) {
-  size_t orig_x = x_pos;
+void draw_string_term(const char *str) {
   while (*str) {
     if (*str == '\n') {
-      x_pos = orig_x;
+      x_pos = 0;
+      y_pos += 8 * m_scale;
     } else {
-      draw_char_term(*str, color);
+      draw_char_term(*str);
     }
     str++;
   }
@@ -88,7 +90,7 @@ void init_graphics() {
   height = get_framebuffer()->height;
 }
 
-limine_framebuffer *get_framebuffer() {
+limine_framebuffer *get_framebuffer(void) {
   return framebuffer_request.response->framebuffers[0];
 }
 
@@ -106,6 +108,20 @@ void put_pixel(size_t x, size_t y, size_t color) {
 
 void draw_char(char c, size_t px, size_t py, uint32_t color) {
   draw_char_scaled(c, px, py, color, m_scale);
+}
+
+void fill_char(size_t px, size_t py) {
+  size_t scale = m_scale;
+  for (size_t row = 0; row < 8; row++) {
+    for (size_t col = 0; col < 8; col++) {
+      // Draw a scale x scale block instead of a single pixel
+      for (size_t dy = 0; dy < scale; dy++) {
+        for (size_t dx = 0; dx < scale; dx++) {
+          put_pixel(px + col * scale + dx, py + row * scale + dy, BLACK);
+        }
+      }
+    }
+  }
 }
 
 void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
@@ -218,4 +234,46 @@ void infinite_rainbow(limine_framebuffer *framebuffer) {
       hue = 0;
     keyboard_process();
   }
+}
+
+void debug_graphics(void) {
+  limine_framebuffer *framebuffer = get_framebuffer();
+  uint32_t center = framebuffer->width / 2;
+  center -= 100;
+
+  set_draw_scale(3);
+  draw_string("Hello Mars, from LykOS", center, 0, BLUE);
+  char height_buf[128];
+  kstring height_str = KSTRING(height_buf, 128);
+  APPEND_STRL(&height_str, "HEIGHT: ", framebuffer->height);
+  draw_kstring(&height_str, center, 24, RED);
+
+  char width_buf[128];
+  kstring width_string = KSTRING(width_buf, 128);
+  APPEND_STRL(&width_string, "WIDTH: ", framebuffer->width);
+  APPEND_STRL(&width_string, " pitch: ", framebuffer->pitch);
+  draw_kstring(&width_string, center, 48, GREEN);
+}
+
+void draw_fstring(const char *format, uint32_t color, ...) {
+  va_list args;
+  va_start(args, color);
+
+  while (*format) {
+    if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
+      int value = va_arg(args, int);
+      char buf[32];
+      itoa(value, buf);
+      draw_string_term(buf);
+      format += 5;
+    } else if (format[0] == '{' && strncmp(format, "{char}", 6) == 0) {
+      char c = (char)va_arg(args, int);
+      draw_char_term(c);
+      format += 6;
+    } else {
+      draw_char_term(*format);
+      format++;
+    }
+  }
+  va_end(args);
 }

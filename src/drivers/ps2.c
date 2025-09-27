@@ -7,8 +7,8 @@ volatile uint8_t keyboard_buffer[KEYBOARD_BUFFER_SIZE];
 volatile uint8_t keyboard_head = 0;
 volatile uint8_t keyboard_tail = 0;
 
-static bool shift = false;
-static bool ctrl = false;
+volatile bool shift = false;
+volatile bool ctrl = false;
 
 __attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame) {
   (void)frame;
@@ -19,7 +19,7 @@ __attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame) {
     keyboard_head = next_head;
   }
 
-  outb(0x20, 0x20);
+  end_of_interrupt();
 }
 
 void keyboard_process(void) {
@@ -40,6 +40,10 @@ void keyboard_process(void) {
       ctrl = false;
       return; // Ctrl up
     }
+
+    // for now ignore other key releases (high bit set)
+    if (sc & 0x80)
+      return;
 
     char c = scancode_to_ascii[sc];
     if (!c)

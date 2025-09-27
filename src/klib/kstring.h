@@ -23,3 +23,5 @@ void append(kstring *b, char *src, int len);
 void append_long(kstring *b, long x);
 void append_char(kstring *b, char c);
 bool kstrncmp(kstring* ks, const char* cmp, int len);
+char *itoa(int value, char *str);
+int strncmp(const char *s1, const char *s2, unsigned int n);
