@@ -22,14 +22,14 @@ void set_idt_gate(uint32_t index, uint64_t handler_ptr, uint16_t selector,
   idt[index].zero = 0;
 }
 
-static inline bool are_interrupts_enabled() {
+static inline bool are_interrupts_enabled(void) {
   unsigned long flags;
   asm volatile("pushf\n\t"
                "pop %0"
                : "=g"(flags));
   return flags & (1 << 9);
 }
-void idt_init() {
+void idt_init(void) {
   serial_writeln("Initialising interrupt descriptor table");
   idt_ptr.limit = (sizeof(IDTEntry) * 256) - 1;
   idt_ptr.base = (uint64_t)&idt;

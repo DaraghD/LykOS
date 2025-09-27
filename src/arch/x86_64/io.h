@@ -1,5 +1,4 @@
 #pragma once
-#include "drivers/serial.h"
 #include <stdint.h>
 
 // Write a byte/word/dword to an I/O port
@@ -35,6 +34,10 @@ static inline uint32_t inl(uint16_t port) {
   return ret;
 }
 
-static inline void iowait(){
+static inline void iowait(void){
   outb(0x80, 0); // write to unused port
+}
+
+static inline void end_of_interrupt(void){
+  outb(0x20,0x20);
 }

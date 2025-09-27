@@ -28,4 +28,4 @@ typedef struct{
 extern void load_gdt(GDTPtr *gdtp);
 
 // Kernel GDT init
-void gdt_init();
+void gdt_init(void);

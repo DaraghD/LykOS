@@ -25,8 +25,8 @@ typedef struct {
 } interrupt_frame;
 
 void set_idt_gate(uint32_t index, uint64_t handler, uint16_t selector, uint8_t flags);
-void idt_init();
-void idt_remap_init();
+void idt_init(void);
+void idt_remap_init(void);
 
 // ISRs
 // Using GCC interrupt attribute

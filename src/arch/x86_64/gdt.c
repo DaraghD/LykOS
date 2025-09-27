@@ -20,7 +20,7 @@ static GDTEntry make_entry(uint32_t base, uint32_t limit, uint8_t access,
   return e;
 }
 
-void gdt_init() {
+void gdt_init(void) {
   serial_writeln("Initialising GDT");
   disable_interrupts();
   // use macros to make it more clear whats being defined here
