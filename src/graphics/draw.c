@@ -38,17 +38,28 @@ static void hcf(void) {
   }
 }
 
-static uint32_t width;
-static uint32_t height;
+uint32_t width;
+uint32_t height;
 
 uint8_t m_scale = 1;
 uint64_t x_pos = 0;
 uint64_t y_pos = 0;
 void set_draw_scale(uint8_t scale) { m_scale = scale; }
 
+void draw_cursor_term(void) {
+  uint32_t old_color = term_color;
+  term_color = WHITE;
+  draw_char('_', x_pos, y_pos, term_color);
+  term_color = old_color;
+}
+
 // draws character using global x_pos and y_pos positions
 // probably should be moved into terminal code
 void draw_char_term(char c) {
+  if (c == '\n') {
+    y_pos += 8 * m_scale;
+    x_pos = 0;
+  }
   draw_char(c, x_pos, y_pos, term_color);
   // advance the cursor
   x_pos += 8 * m_scale;
@@ -73,7 +84,7 @@ void draw_string_term(const char *str) {
   }
 }
 
-void init_graphics() {
+void init_graphics(void) {
   // Ensure the bootloader actually understands our base revision (see spec).
   if (LIMINE_BASE_REVISION_SUPPORTED == false) {
     serial_write("Limine base revision not supported");
@@ -131,7 +142,7 @@ void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
       py += 8 * m_scale;
     }
     if (*str == '\n') {
-      py += 8 * m_scale; // bug
+      py += 8 * m_scale;
       px = 0;
     } else {
       draw_char_scaled(*str, px, py, color, m_scale);
@@ -148,7 +159,7 @@ void draw_kstring(kstring *string, size_t px, size_t py, uint32_t color) {
 void clear_screen(limine_framebuffer *fb_ptr, uint32_t color) {
   uint32_t *buffer = (uint32_t *)fb_ptr->address;
   size_t total_pixel = fb_ptr->height * fb_ptr->width;
-  for (size_t i = total_pixel / 2; i < total_pixel; i++)
+  for (size_t i = 0; i < total_pixel; i++)
     buffer[i] = color;
 }
 
@@ -255,14 +266,20 @@ void debug_graphics(void) {
   draw_kstring(&width_string, center, 48, GREEN);
 }
 
-void draw_fstring(const char *format, uint32_t color, ...) {
+void draw_fstring(const char *format, ...) {
   va_list args;
-  va_start(args, color);
+  va_start(args, format);
 
   while (*format) {
-    if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
+    if (format[0] == '{' && strncmp(format, "{uint}", 6) == 0) {
+      uint64_t value = va_arg(args, uint64_t);
+      char buf[21];
+      uitoa(value, buf);
+      draw_string_term(buf);
+      format += 6;
+    } else if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
       int value = va_arg(args, int);
-      char buf[32];
+      char buf[1000];
       itoa(value, buf);
       draw_string_term(buf);
       format += 5;

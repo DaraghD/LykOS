@@ -1,7 +1,7 @@
 #include "gdt.h"
 #include "drivers/serial.h"
 
-static inline void disable_interrupts() { asm volatile("cli"); }
+static inline void disable_interrupts(void) { asm volatile("cli"); }
 
 enum { GDT_COUNT = 3 };
 static GDTEntry gdt[GDT_COUNT];

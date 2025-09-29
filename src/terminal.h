@@ -6,3 +6,4 @@ extern uint32_t term_color;
 
 void terminal_init(void);
 void terminal_process_input(uint8_t sc);
+void terminal_newline(void);

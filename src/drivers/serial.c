@@ -46,12 +46,21 @@ void serial_write_fstring(const char *format, ...) {
   va_start(args, format);
 
   while (*format) {
-    if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
-      int value = va_arg(args, int);
+    if (format[0] == '{' && strncmp(format, "{uint}", 6) == 0) {
+      uint64_t value = va_arg(args, uint64_t);
+      char buf[21];
+
+      uitoa(value, buf);
+      serial_write(buf);
+      format += 6;
+    } else if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
+
+      int64_t value = va_arg(args, int);
       char buf[32];
       itoa(value, buf);
       serial_write(buf);
       format += 5;
+
     } else if (format[0] == '{' && strncmp(format, "{char}", 6) == 0) {
       char c = (char)va_arg(args, int); // promoted to int
       serial_write_char(c);

@@ -1,7 +1,13 @@
 #include "ps2.h"
 #include "arch/x86_64/io.h"
 #include "terminal.h"
+#include <graphics/draw.h>
 #include <stdbool.h>
+
+#define SHIFT_DOWN 0x2A
+#define SHIFT_UP 0xAA
+#define CTRL_DOWN 0x1D
+#define CTRL_UP 0x9D
 
 volatile uint8_t keyboard_buffer[KEYBOARD_BUFFER_SIZE];
 volatile uint8_t keyboard_head = 0;
@@ -27,18 +33,18 @@ void keyboard_process(void) {
     uint8_t sc = keyboard_buffer[keyboard_tail];
     keyboard_tail = (keyboard_tail + 1) % KEYBOARD_BUFFER_SIZE;
     switch (sc) {
-    case 0x2A:
+    case SHIFT_DOWN:
       shift = true;
-      return; // Shift down
-    case 0xAA:
+      return;
+    case SHIFT_UP:
       shift = false;
-      return; // Shift up
-    case 0x1D:
+      return;
+    case CTRL_DOWN:
       ctrl = true;
-      return; // Ctrl down
-    case 0x9D:
+      return;
+    case CTRL_UP:
       ctrl = false;
-      return; // Ctrl up
+      return;
     }
 
     // for now ignore other key releases (high bit set)
@@ -48,7 +54,6 @@ void keyboard_process(void) {
     char c = scancode_to_ascii[sc];
     if (!c)
       return;
-    // if (ctrl &&
     terminal_process_input(sc);
   }
 }

@@ -48,7 +48,7 @@ bool kstrncmp(kstring *ks, const char *cmp, int len) {
   }
   return true;
 }
-char *itoa(int value, char *str) {
+char *itoa(int64_t value, char *str) {
   char *p = str;
   char *p1 = str;
   char tmp;
@@ -61,7 +61,7 @@ char *itoa(int value, char *str) {
   }
 
   // handle negatives
-  int sign = value < 0;
+  uint64_t sign = value < 0;
   if (sign)
     value = -value;
 
@@ -76,6 +76,36 @@ char *itoa(int value, char *str) {
   *p = '\0';
 
   // reverse the string in-place
+  for (--p; p1 < p; ++p1, --p) {
+    tmp = *p1;
+    *p1 = *p;
+    *p = tmp;
+  }
+
+  return str;
+}
+char *uitoa(uint64_t value, char *str) {
+  char *p = str;
+  char *p1 = str;
+  char tmp;
+
+  // handle 0 explicitly
+  if (value == 0) {
+    *p++ = '0';
+    *p = '\0';
+    return str;
+  }
+
+  // convert digits (no sign check needed for unsigned type)
+  while (value > 0) {
+    *p++ = '0' + (value % 10);
+    value /= 10;
+  }
+
+  *p = '\0';
+
+  // reverse the string in-place
+  // p points one past the last digit (i.e., at the null terminator)
   for (--p; p1 < p; ++p1, --p) {
     tmp = *p1;
     *p1 = *p;

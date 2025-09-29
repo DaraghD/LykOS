@@ -1,5 +1,6 @@
 #pragma once
 #include <stdbool.h>
+#include <stdint.h>
 
 #define KSTRING(buf, cap) {buf, cap, 0, 0}
 #define APPEND_STR(buf, str) append(buf, str, sizeof(str)-1)
@@ -23,5 +24,6 @@ void append(kstring *b, char *src, int len);
 void append_long(kstring *b, long x);
 void append_char(kstring *b, char c);
 bool kstrncmp(kstring* ks, const char* cmp, int len);
-char *itoa(int value, char *str);
+char *itoa(int64_t value, char *str);
+char *uitoa(uint64_t value, char* str);
 int strncmp(const char *s1, const char *s2, unsigned int n);
