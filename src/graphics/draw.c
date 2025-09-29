@@ -233,9 +233,9 @@ uint32_t hsv_to_rgb_int(uint16_t h, uint8_t s, uint8_t v) {
   return (r << 16) | (g << 8) | b;
 }
 
+static uint64_t hue = 0;
 void infinite_rainbow(limine_framebuffer *framebuffer) {
   uint64_t colour;
-  uint64_t hue = 0;
   // rainbowww
   for (;;) {
     colour = hsv_to_rgb_int(hue, 255, 255);
@@ -243,7 +243,7 @@ void infinite_rainbow(limine_framebuffer *framebuffer) {
     hue++;
     if (hue >= 360)
       hue = 0;
-    keyboard_process();
+    return;
   }
 }
 

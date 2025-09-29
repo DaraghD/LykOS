@@ -7,7 +7,6 @@
 #define APPEND_STRL(buf, str, long) APPEND_STR(buf,str); append_long(buf, long)
 #define QUICK_KSTRING(str) char buf[128]; kstring ks = KSTRING(buf, 128); APPEND_STR(&ks, str); ks;
 
-// TODO: try get these working for vsprintf formatting
 #define va_list  __builtin_va_list
 #define va_start __builtin_va_start
 #define va_end   __builtin_va_end

@@ -1,6 +1,7 @@
 #include "mem.h"
 #include "drivers/serial.h"
 #include "graphics/draw.h"
+#include "req.h"
 #include "vendor/limine.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -26,6 +27,10 @@ __attribute__((
         ".limine_requests"))) static volatile struct limine_paging_mode_request
     limine_paging_mode_request = {.id = LIMINE_PAGING_MODE_REQUEST,
                                   .revision = 0};
+__attribute__((
+    used,
+    section(".limine_requests"))) static volatile struct limine_hhdm_request
+    limine_hhdm_request = {.id = LIMINE_HHDM_REQUEST, .revision = 0};
 
 static uint64_t total_usable = 0;
 static uint64_t reclaimable = 0;
@@ -56,7 +61,7 @@ void init_memmap(void) {
         entry->base, entry->length, entry->type);
 
     // draw_fstring("Region {uint}: base={uint} length={uint} type={uint}\n", i,
-    //             entry->base, TO_MB(entry->length), entry->type);
+    // entry->base, TO_MB(entry->length), entry->type);
 
     switch (entry->type) {
     case (LIMINE_MEMMAP_USABLE):
@@ -146,20 +151,21 @@ void mark_frames_used(uint64_t start, uint64_t count) {
     set_bit(start + i); // 1 = used
   }
 }
+
 void pmm_init(struct limine_memmap_response *response) {
   for (uint64_t i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
-    if (entry->type == LIMINE_MEMMAP_USABLE) {
+    if (entry->type != LIMINE_MEMMAP_USABLE) {
       uint64_t start = entry->base / FRAME_SIZE;
       uint64_t count = entry->length / FRAME_SIZE;
-      mark_frames_free(start, count);
+      mark_frames_used(start, count);
     }
   }
 }
 
 int64_t find_first_free_frame(void) {
-  for (int64_t i = 0; i < MAX_FRAMES / 8; i++) {
-    if (frame_bitmap[i] != 0xFF) { // not full
+  for (int64_t i = 1; i < MAX_FRAMES / 8; i++) { // avoid first frame
+    if (frame_bitmap[i] != 0xFF) {               // not full
       for (int b = 0; b < 8; b++) {
         if (!(frame_bitmap[i] & (1 << b))) {
           return i * 8 + b;
@@ -170,19 +176,22 @@ int64_t find_first_free_frame(void) {
   return -1; // none
 }
 
-// Can return NULL
+// can null
 void *pmm_alloc_frame(void) {
   int64_t idx = find_first_free_frame();
   if (idx == -1)
     return NULL;
   set_bit(idx);
-  return (void *)(idx * FRAME_SIZE);
+  return (void *)((idx * FRAME_SIZE) + limine_hhdm_request.response->offset);
+  // return (void *)(idx * FRAME_SIZE);
 }
 
 void *alloc_heap(void) {
   void *heap = pmm_alloc_frame();
-  uint64_t *my_num = (uint64_t *)heap;
-  *my_num = 100;
+  if (heap == NULL)
+    return NULL;
+  const char *msg = "Hello from HEAP!";
+  memcpy(heap, msg, 16);
 
-  return my_num;
+  return heap;
 }

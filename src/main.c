@@ -5,6 +5,7 @@
 #include "graphics/draw.h"
 #include "mem/mem.h"
 #include "terminal.h"
+#include <cpuid.h>
 #include <stdint.h>
 
 static void hcf(void) {
@@ -37,15 +38,18 @@ void kmain(void) {
   gdt_init();
   idt_init();
   pic_remap();
+  terminal_init();
   init_memmap();
   asm volatile("sti");
-  terminal_init();
-  uint64_t *my_num = alloc_heap();
-  draw_fstring("My num: {uint}", *my_num);
-  // print_memmap();
+  // char *my_num = alloc_heap();
+  // draw_fstring("My num: {uint}", *my_num);
+  // draw_string_term(my_num);
+
   while (1) {
     keyboard_process();
     xddd();
+    // infinite_rainbow(get_framebuffer());
   }
+
   hcf();
 }
