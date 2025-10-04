@@ -287,6 +287,14 @@ void draw_fstring(const char *format, ...) {
       char c = (char)va_arg(args, int);
       draw_char_term(c);
       format += 6;
+    } else if (format[0] == '{' && strncmp(format, "{str}", 5) == 0) {
+      const char *s = va_arg(args, const char *);
+      if (s) {
+        while (*s) {
+          serial_write_char(*s++);
+        }
+      }
+      format += 5;
     } else {
       draw_char_term(*format);
       format++;

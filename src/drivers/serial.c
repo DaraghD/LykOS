@@ -65,6 +65,15 @@ void serial_write_fstring(const char *format, ...) {
       char c = (char)va_arg(args, int); // promoted to int
       serial_write_char(c);
       format += 6;
+
+    } else if (format[0] == '{' && strncmp(format, "{str}", 5) == 0) {
+      const char *s = va_arg(args, const char *);
+      if (s) {
+        while (*s) {
+          serial_write_char(*s++);
+        }
+      }
+      format += 5;
     } else {
       serial_write_char(*format);
       format++;
