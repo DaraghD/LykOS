@@ -1,20 +1,10 @@
 #include "mem.h"
 #include "drivers/serial.h"
-#include "graphics/draw.h"
 #include "req.h"
+#include "terminal.h"
 #include "vendor/limine.h"
 #include <stdbool.h>
 #include <stdint.h>
-
-#define KB 1024
-#define MB (1024 * KB)
-#define GB (1024 * MB)
-
-#define TO_KB(bytes) ((bytes) / KB)
-#define TO_MB(bytes) ((bytes) / MB)
-#define TO_GB(bytes) ((bytes) / GB)
-
-#define PAGE_SIZE (KB * 4)
 
 __attribute__((
     used,
@@ -39,10 +29,9 @@ static uint64_t reserved = 0;
 static uint64_t framebuf = 0;
 static uint64_t nvs = 0;
 static uint64_t exe = 0;
-static bool memmap_init = false;
 static uint64_t highest_addr = 0;
 
-void init_memmap(void) {
+void memmap_init(void) {
   struct limine_memmap_response *response = limine_memmap_request.response;
   if (!response) {
     serial_writeln("No memory map from Limine!");
@@ -56,9 +45,13 @@ void init_memmap(void) {
     if (entry->base > highest_addr)
       highest_addr = entry->base;
 
+    char *is_usable = "True";
+    if (entry->type != LIMINE_MEMMAP_USABLE)
+      is_usable = "False";
+
     serial_write_fstring(
-        "Region {uint}: base={uint} length={uint} type={uint}\n", i,
-        entry->base, entry->length, entry->type);
+        "Region {uint}: base={uint} length={uint} usable={str}\n", i,
+        entry->base, entry->length, is_usable);
 
     // draw_fstring("Region {uint}: base={uint} length={uint} type={uint}\n", i,
     // entry->base, TO_MB(entry->length), entry->type);
@@ -90,40 +83,7 @@ void init_memmap(void) {
       break;
     }
   }
-  memmap_init = true;
 }
-
-void print_paging(void) {
-  struct limine_paging_mode_response *response =
-      limine_paging_mode_request.response;
-
-  draw_fstring("\nPAGING\n");
-  draw_fstring("Mode : {uint}\n", response->mode);
-  draw_fstring("Revision: {uint}\n", response->revision);
-  draw_fstring("Max Mode: {uint}\n", limine_paging_mode_request.max_mode);
-  draw_fstring("Min Mode: {uint}\n", limine_paging_mode_request.min_mode);
-  draw_fstring("Mode: {uint}\n", limine_paging_mode_request.mode);
-}
-
-void print_memmap(void) {
-  if (!memmap_init) {
-    serial_writeln("Memmap not initialised, can't print");
-    return;
-  }
-  draw_fstring("\n Total usable~      (MB):{uint}\n", TO_MB(total_usable));
-  draw_fstring("\n Total reclaimable~ (KB):{uint}\n", TO_KB(reclaimable));
-  draw_fstring("\n Total bad~         (KB):{uint}\n", TO_KB(bad));
-  draw_fstring("\n Total reserved~    (MB):{uint}\n", TO_MB(reserved));
-  draw_fstring("\n Total exe~         (KB):{uint}\n", TO_KB(exe));
-  draw_fstring("\n Total framebuffer~ (MB):{uint}\n", TO_MB(framebuf));
-  draw_fstring("\n Total nvs?~        (KB):{uint}\n", TO_KB(nvs));
-  draw_fstring("\n Bitmap size        (MB):{uint}\n",
-               TO_MB(highest_addr / (8 * PAGE_SIZE)));
-}
-
-#define FRAME_SIZE (4 * KB)
-// supports 4GB of memory
-#define MAX_FRAMES (1024 * 1024)
 
 // bitmap will have 1 frame per bit
 static uint8_t frame_bitmap[MAX_FRAMES / 8];
@@ -152,20 +112,25 @@ void mark_frames_used(uint64_t start, uint64_t count) {
   }
 }
 
-void pmm_init(struct limine_memmap_response *response) {
+void pmm_init(void) {
+  memset(frame_bitmap, 0xFF, sizeof(frame_bitmap));
+  struct limine_memmap_response *response = limine_memmap_request.response;
   for (uint64_t i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
-    if (entry->type != LIMINE_MEMMAP_USABLE) {
+    if (entry->type == LIMINE_MEMMAP_USABLE) {
+      serial_write_fstring("Entry is usable at base {uint} \n", entry->base);
       uint64_t start = entry->base / FRAME_SIZE;
       uint64_t count = entry->length / FRAME_SIZE;
-      mark_frames_used(start, count);
+      serial_write_fstring("Marking {uint} frames free at {uint}\n", count,
+                           start);
+      mark_frames_free(start, count);
     }
   }
 }
 
 int64_t find_first_free_frame(void) {
   for (int64_t i = 1; i < MAX_FRAMES / 8; i++) { // avoid first frame
-    if (frame_bitmap[i] != 0xFF) {               // not full
+    if (frame_bitmap[i] != 0xFF) {               // has to have one non zero bit
       for (int b = 0; b < 8; b++) {
         if (!(frame_bitmap[i] & (1 << b))) {
           return i * 8 + b;
@@ -177,21 +142,91 @@ int64_t find_first_free_frame(void) {
 }
 
 // can null
+void *alloc_frames(uint64_t frame_amount) {
+  uint64_t avail_contigous_frames = 0;
+  uint64_t start_idx = 0;
+  for (int64_t i = 1; i < MAX_FRAMES / 8; i++) { // avoid first frame
+    // TODO:possible optimisation here using amount sizes
+    if (frame_bitmap[i] != 0xFF) { // has to have one non zero bit
+      for (int b = 0; b < 8; b++) {
+        if (!(frame_bitmap[i] & (1 << b))) {
+          // we have found a free frame
+          if (start_idx == 0)
+            start_idx = i * 8 + b;
+          avail_contigous_frames++;
+
+          if (avail_contigous_frames == frame_amount) {
+            mark_frames_used(start_idx, frame_amount);
+            serial_write_fstring("Allocating idx:{uint}, frames {uint}\n",
+                                 start_idx, avail_contigous_frames);
+            return (void *)((start_idx * FRAME_SIZE) +
+                            limine_hhdm_request.response->offset);
+          }
+        } else { // frame isnt free, reset counters
+          avail_contigous_frames = 0;
+          start_idx = 0;
+        }
+      }
+    }
+  }
+  return NULL;
+}
+
+// can null
 void *pmm_alloc_frame(void) {
   int64_t idx = find_first_free_frame();
+  serial_write_fstring("Allocating frame {uint}\n", idx);
+  serial_write_fstring(
+      "Frame base: {uint}\n Frame virt: {uint}\n", idx * FRAME_SIZE,
+      (idx * FRAME_SIZE) + limine_hhdm_request.response->offset);
+
   if (idx == -1)
     return NULL;
   set_bit(idx);
   return (void *)((idx * FRAME_SIZE) + limine_hhdm_request.response->offset);
-  // return (void *)(idx * FRAME_SIZE);
 }
 
-void *alloc_heap(void) {
-  void *heap = pmm_alloc_frame();
-  if (heap == NULL)
-    return NULL;
-  const char *msg = "Hello from HEAP!";
-  memcpy(heap, msg, 16);
+void pmm_free_frame(void) { return; }
 
-  return heap;
+//
+// debug
+//
+void print_memory_stats(void) {
+  uint64_t free_frames = 0;
+  for (int64_t i = 1; i < MAX_FRAMES / 8; i++) { // avoid first frame
+    if (frame_bitmap[i] != 0xFF) {
+      for (int b = 0; b < 8; b++) {
+        if (!(frame_bitmap[i] & (1 << b))) {
+          free_frames += 1;
+        }
+      }
+    }
+  }
+  uint64_t free_frames_MB = TO_MB(free_frames * FRAME_SIZE);
+  terminal_fstring("Free memory MB: {uint}\n", free_frames_MB);
+  terminal_fstring("Free pages: {uint}\n", free_frames);
+}
+
+void print_paging(void) {
+  struct limine_paging_mode_response *response =
+      limine_paging_mode_request.response;
+
+  terminal_fstring("\nPAGING\n");
+  terminal_fstring("Mode : {uint}\n", response->mode);
+  terminal_fstring("Revision: {uint}\n", response->revision);
+  terminal_fstring("Max Mode: {uint}\n", limine_paging_mode_request.max_mode);
+  terminal_fstring("Min Mode: {uint}\n", limine_paging_mode_request.min_mode);
+  terminal_fstring("Mode: {uint}\n", limine_paging_mode_request.mode);
+}
+
+void print_memmap(void) {
+  terminal_fstring("\n Total usable~      (MB):{uint}\n", TO_MB(total_usable));
+  terminal_fstring("\n Total reclaimable~ (KB):{uint}\n", TO_KB(reclaimable));
+  terminal_fstring("\n Total bad~         (KB):{uint}\n", TO_KB(bad));
+  terminal_fstring("\n Total reserved~    (MB):{uint}\n", TO_MB(reserved));
+  terminal_fstring("\n Total exe~         (KB):{uint}\n", TO_KB(exe));
+  terminal_fstring("\n Total framebuffer~ (MB):{uint}\n", TO_MB(framebuf));
+  terminal_fstring("\n Total nvs?~        (KB):{uint}\n", TO_KB(nvs));
+  terminal_fstring("\n Bitmap size        (MB):{uint}\n",
+                   TO_MB(highest_addr / (8 * FRAME_SIZE)));
 }
