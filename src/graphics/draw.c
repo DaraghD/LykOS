@@ -38,53 +38,13 @@ static void hcf(void) {
   }
 }
 
-uint32_t width;
-uint32_t height;
+uint32_t g_width;
+uint32_t g_height;
 
-uint8_t m_scale = 1;
-uint64_t x_pos = 0;
-uint64_t y_pos = 0;
-void set_draw_scale(uint8_t scale) { m_scale = scale; }
+uint8_t g_scale = 1;
+void set_draw_scale(uint8_t scale) { g_scale = scale; }
 
-void draw_cursor_term(void) {
-  uint32_t old_color = term_color;
-  term_color = WHITE;
-  draw_char('_', x_pos, y_pos, term_color);
-  term_color = old_color;
-}
-
-// draws character using global x_pos and y_pos positions
-// probably should be moved into terminal code
-void draw_char_term(char c) {
-  if (c == '\n') {
-    y_pos += 8 * m_scale;
-    x_pos = 0;
-  }
-  draw_char(c, x_pos, y_pos, term_color);
-  // advance the cursor
-  x_pos += 8 * m_scale;
-  // if next position is greater than the width
-  // takes into account how big the START of the next character will be
-  if (x_pos > (get_framebuffer()->width) - (7 * m_scale)) {
-    y_pos += 8 * m_scale;
-    x_pos = 0;
-  }
-}
-
-// TODO: move this and draw_char_term to terminal code
-void draw_string_term(const char *str) {
-  while (*str) {
-    if (*str == '\n') {
-      x_pos = 0;
-      y_pos += 8 * m_scale;
-    } else {
-      draw_char_term(*str);
-    }
-    str++;
-  }
-}
-
-void init_graphics(void) {
+void graphics_init(void) {
   // Ensure the bootloader actually understands our base revision (see spec).
   if (LIMINE_BASE_REVISION_SUPPORTED == false) {
     serial_write("Limine base revision not supported");
@@ -97,8 +57,8 @@ void init_graphics(void) {
     serial_write("Failed to receive framebuffer");
     hcf();
   }
-  width = get_framebuffer()->width;
-  height = get_framebuffer()->height;
+  g_width = get_framebuffer()->width;
+  g_height = get_framebuffer()->height;
 }
 
 limine_framebuffer *get_framebuffer(void) {
@@ -118,11 +78,11 @@ void put_pixel(size_t x, size_t y, size_t color) {
 }
 
 void draw_char(char c, size_t px, size_t py, uint32_t color) {
-  draw_char_scaled(c, px, py, color, m_scale);
+  draw_char_scaled(c, px, py, color, g_scale);
 }
 
 void fill_char(size_t px, size_t py) {
-  size_t scale = m_scale;
+  size_t scale = g_scale;
   for (size_t row = 0; row < 8; row++) {
     for (size_t col = 0; col < 8; col++) {
       // Draw a scale x scale block instead of a single pixel
@@ -137,16 +97,16 @@ void fill_char(size_t px, size_t py) {
 
 void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
   while (*str) {
-    if (px > (width - (7 * m_scale))) {
+    if (px > (g_width - (7 * g_scale))) {
       px = 0;
-      py += 8 * m_scale;
+      py += 8 * g_scale;
     }
     if (*str == '\n') {
-      py += 8 * m_scale;
+      py += 8 * g_scale;
       px = 0;
     } else {
-      draw_char_scaled(*str, px, py, color, m_scale);
-      px += 8 * m_scale;
+      draw_char_scaled(*str, px, py, color, g_scale);
+      px += 8 * g_scale;
     }
     str++;
   }
@@ -264,41 +224,4 @@ void debug_graphics(void) {
   APPEND_STRL(&width_string, "WIDTH: ", framebuffer->width);
   APPEND_STRL(&width_string, " pitch: ", framebuffer->pitch);
   draw_kstring(&width_string, center, 48, GREEN);
-}
-
-void draw_fstring(const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-
-  while (*format) {
-    if (format[0] == '{' && strncmp(format, "{uint}", 6) == 0) {
-      uint64_t value = va_arg(args, uint64_t);
-      char buf[21];
-      uitoa(value, buf);
-      draw_string_term(buf);
-      format += 6;
-    } else if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
-      int value = va_arg(args, int);
-      char buf[1000];
-      itoa(value, buf);
-      draw_string_term(buf);
-      format += 5;
-    } else if (format[0] == '{' && strncmp(format, "{char}", 6) == 0) {
-      char c = (char)va_arg(args, int);
-      draw_char_term(c);
-      format += 6;
-    } else if (format[0] == '{' && strncmp(format, "{str}", 5) == 0) {
-      const char *s = va_arg(args, const char *);
-      if (s) {
-        while (*s) {
-          serial_write_char(*s++);
-        }
-      }
-      format += 5;
-    } else {
-      draw_char_term(*format);
-      format++;
-    }
-  }
-  va_end(args);
 }
