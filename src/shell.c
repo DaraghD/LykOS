@@ -64,8 +64,11 @@ void shell_execute(kstring *line) {
   else if (kstrncmp(line, "green", 5))
     term_color = GREEN;
 
-  else if (kstrncmp(line, "mem", 3))
+  else if (kstrncmp(line, "mmap", 4))
     print_memmap();
+
+  else if (kstrncmp(line, "allocstats", 4))
+    print_allocation_stats();
 
   else if (kstrncmp(line, "paging", 6))
     print_paging();
