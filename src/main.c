@@ -2,7 +2,9 @@
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
 #include "drivers/ps2.h"
+#include "drivers/serial.h"
 #include "graphics/draw.h"
+#include "mem/kalloc.h"
 #include "mem/mem.h"
 #include "terminal.h"
 #include <cpuid.h>
@@ -24,8 +26,8 @@ static void xddd(void) {
     char frames[] = {'|', '/', '-', '\\'};
     int frame = frames[rotation % 4];
 
-    fill_char(get_framebuffer()->width - (8 * m_scale), 0);
-    draw_char(frame, get_framebuffer()->width - (8 * m_scale), 0, WHITE);
+    fill_char(get_framebuffer()->width - (8 * g_scale), 0);
+    draw_char(frame, get_framebuffer()->width - (8 * g_scale), 0, WHITE);
     rotation++;
     if (rotation > 3)
       rotation = 0;
@@ -34,21 +36,35 @@ static void xddd(void) {
 }
 
 void kmain(void) {
-  init_graphics();
   gdt_init();
   idt_init();
   pic_remap();
+  memmap_init();
+  pmm_init();
+
+  graphics_init();
   terminal_init();
-  init_memmap();
   asm volatile("sti");
-  // char *my_num = alloc_heap();
-  // draw_fstring("My num: {uint}", *my_num);
-  // draw_string_term(my_num);
+
+  void *vp = pmm_alloc_frame();
+  *(uint64_t *)vp = 10;
+
+  alloc_frames(4);
+  serial_write_fstring("Allocating 4098 bytes should be 2 pages\n");
+  kalloc(4098);
+
+  serial_write_fstring("Allocating 4088 bytes + header should be 1 page\n");
+
+  kalloc(4088);
+  void *k = kalloc(2000);
+  kfree((uint64_t)k);
+  kalloc(1000);
+  void *v = kalloc(9000);
+
+  kfree((uint64_t)v);
 
   while (1) {
     keyboard_process();
-    xddd();
-    // infinite_rainbow(get_framebuffer());
   }
 
   hcf();

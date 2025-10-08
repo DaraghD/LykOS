@@ -30,4 +30,7 @@ xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
 # Install Limine stage 1 and 2 for legacy BIOS boot.
 ./limine/limine bios-install image.iso
 #-d cpu_reset  file:serial.log -D qemu.log
-qemu-system-x86_64 -cdrom image.iso -d int -no-reboot -D qemu.log -serial stdio
+qemu-system-x86_64 -m 4G -cdrom image.iso -d int -no-reboot -D qemu.log -serial file:serial.log -s -S &
+# qemu-system-x86_64 -m 4G -cdrom image.iso -d int -no-reboot -D qemu.log -serial file:serial.log 
+# & and disown for CLION dbg
+disown
