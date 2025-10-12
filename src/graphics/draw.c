@@ -1,7 +1,6 @@
 #include "draw.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
-#include "terminal.h"
 #include "vendor/font.h"
 #include "vendor/limine.h"
 #include <stddef.h>

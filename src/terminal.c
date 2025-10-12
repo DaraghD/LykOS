@@ -6,6 +6,8 @@
 #include "mem/arena.h"
 #include "req.h" //lsp bug leave included
 #include "shell.h"
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,8 +22,6 @@ uint64_t term_ypos = 0;
 uint32_t term_color;
 
 static void draw_cursor_term(void);
-static void draw_char_term(char c);
-static void draw_string_term(const char *str);
 static void draw_kstring_term(kstring *kstr);
 static void clear_current_command(void);
 
@@ -256,36 +256,7 @@ void terminal_fstring(const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-  while (*format) {
-    if (format[0] == '{' && strncmp(format, "{uint}", 6) == 0) {
-      uint64_t value = va_arg(args, uint64_t);
-      char buf[21];
-      uitoa(value, buf);
-      draw_string_term(buf);
-      format += 6;
-    } else if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
-      int value = va_arg(args, int);
-      char buf[1000];
-      itoa(value, buf);
-      draw_string_term(buf);
-      format += 5;
-    } else if (format[0] == '{' && strncmp(format, "{char}", 6) == 0) {
-      char c = (char)va_arg(args, int);
-      draw_char_term(c);
-      format += 6;
-    } else if (format[0] == '{' && strncmp(format, "{str}", 5) == 0) {
-      const char *s = va_arg(args, const char *);
-      if (s) {
-        while (*s) {
-          draw_char_term(*s++);
-        }
-      }
-      format += 5;
-    } else {
-      draw_char_term(*format);
-      format++;
-    }
-  }
+  write_fstring(TERMINAL, format, args); 
   va_end(args);
 }
 
@@ -296,7 +267,7 @@ void terminal_clearscreen(void) {
   draw_cursor_term();
 }
 
-static void draw_char_term(char c) {
+void draw_char_term(char c) {
   if (c == '\n') {
     term_ypos += 8 * g_scale;
     term_xpos = 0;
@@ -333,7 +304,7 @@ static void draw_kstring_term(kstring *kstr) {
   }
 }
 
-static void draw_string_term(const char *str) {
+void draw_string_term(const char *str) {
   while (*str) {
     if (*str == '\n') {
       term_xpos = 0;

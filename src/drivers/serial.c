@@ -27,12 +27,12 @@ void serial_write_char(char c) {
 }
 
 // Write a null-terminated string to COM1
-void serial_write(const char *s) {
-  while (*s) {
-    if (*s == '\n') {
+void serial_write(const char *str) {
+  while (*str) {
+    if (*str == '\n') {
       serial_write_char('\r');
     }
-    serial_write_char(*s++);
+    serial_write_char(*str++);
   }
 }
 
@@ -45,39 +45,6 @@ void serial_write_fstring(const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-  while (*format) {
-    if (format[0] == '{' && strncmp(format, "{uint}", 6) == 0) {
-      uint64_t value = va_arg(args, uint64_t);
-      char buf[21];
-
-      uitoa(value, buf);
-      serial_write(buf);
-      format += 6;
-    } else if (format[0] == '{' && strncmp(format, "{int}", 5) == 0) {
-
-      int64_t value = va_arg(args, int);
-      char buf[32];
-      itoa(value, buf);
-      serial_write(buf);
-      format += 5;
-
-    } else if (format[0] == '{' && strncmp(format, "{char}", 6) == 0) {
-      char c = (char)va_arg(args, int); // promoted to int
-      serial_write_char(c);
-      format += 6;
-
-    } else if (format[0] == '{' && strncmp(format, "{str}", 5) == 0) {
-      const char *s = va_arg(args, const char *);
-      if (s) {
-        while (*s) {
-          serial_write_char(*s++);
-        }
-      }
-      format += 5;
-    } else {
-      serial_write_char(*format);
-      format++;
-    }
-  }
+  write_fstring(SERIAL, format, args); 
   va_end(args);
 }

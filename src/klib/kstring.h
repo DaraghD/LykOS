@@ -18,10 +18,16 @@ typedef struct {
   bool error;
 } kstring;
 
+
+typedef enum 
+{
+  TERMINAL,
+  SERIAL,
+} io_type;
+
 void append(kstring *b, char *src, int len);
 void append_long(kstring *b, long x);
 void append_char(kstring *b, char c);
 bool kstrncmp(kstring* ks, const char* cmp, int len);
-char *itoa(int64_t value, char *str);
-char *uitoa(uint64_t value, char* str);
 int strncmp(const char *s1, const char *s2, unsigned int n);
+void write_fstring(io_type io, const char *format, va_list args); 
