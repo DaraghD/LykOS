@@ -1,5 +1,6 @@
 bin/
 obj/
+.idea/
 iso_root/
 image.iso
 .cache

@@ -202,7 +202,6 @@ void infinite_rainbow(limine_framebuffer *framebuffer) {
     hue++;
     if (hue >= 360)
       hue = 0;
-    return;
   }
 }
 

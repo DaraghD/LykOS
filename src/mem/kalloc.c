@@ -4,8 +4,6 @@
 #include "req.h"
 #include "terminal.h"
 #include <stdint.h>
-#include <stdlib.h>
-#include <strings.h>
 
 #define FREELIST_COALESCE_SIZE 100
 
@@ -21,6 +19,14 @@ static uint64_t freelist_count = 0;
 static uint64_t debug_freelist_size = 0;
 static uint64_t debug_total_allocated = 0;
 
+static bool seen(mem_header *seen_arr[], mem_header *curr, uint32_t len) {
+  for (uint32_t i = 0; i < len; i++) {
+    if (seen_arr[i] == curr) {
+      return true;
+    }
+  }
+  return false;
+}
 // returns NULL if no suitable locations
 // returns amount of unused bytes in *unused_out
 static void *freelist_alloc(uint64_t size, uint64_t *unused_out) {
@@ -71,9 +77,9 @@ static void add_to_freelist(uint64_t addr, uint64_t size) {
 
   free_list_head = hdr;
   serial_write_fstring(
-      "Added to freelist block: block_addr={hex}, size={uint}\n",
-      (uint64_t)hdr, hdr->size);
-  debug_freelist_size += hdr->size;
+      "Added to freelist block: block_addr={hex}, size={uint}\n", (uint64_t)hdr,
+      hdr->size);
+  debug_freelist_size += (hdr->size) + sizeof(mem_header);
   freelist_count++;
 }
 
@@ -102,6 +108,8 @@ void *kalloc(uint64_t size) {
   uint64_t unused_addr = (uint64_t)mem + total;
 
   serial_write_fstring("\n UNUSED MEMORY FROM PAGES : {uint}\n", unused);
+  serial_write_fstring("Requested={uint}\n", size);
+  serial_write_fstring("Allocating={uint}\n", size + sizeof(uint64_t));
   serial_write_fstring("Allocation starts at {hex}\n", (uint64_t)mem);
   serial_write_fstring("Unused starts at {hex}\n", (uint64_t)unused_addr);
 
@@ -120,12 +128,10 @@ void *kalloc(uint64_t size) {
 
 void kfree(uint64_t ptr) {
   // read the size placed by kmalloc before the ptr
-  uint64_t size2 = ((uint64_t *)ptr)[-1];
+  uint64_t size = ((uint64_t *)ptr)[-1];
   uint64_t *size_addr = (uint64_t *)(ptr - sizeof(uint64_t));
-  uint64_t size = *size_addr;
   serial_write_fstring("KFree called with {uint}, size of allocation {uint}\n",
                        ptr, size);
-  serial_write_fstring("size2={uint} size={uint}", size2, size);
 
   add_to_freelist((uint64_t)size_addr, size + sizeof(uint64_t));
   debug_total_allocated -= size;
@@ -137,11 +143,19 @@ void debug_freelist(void) {
   serial_write_fstring("\n FREELIST DEBUG \n");
   int index = 0;
   mem_header *current = free_list_head;
+  mem_header *seen_arr[freelist_count];
+  uint32_t seen_idx = 0;
   while (current) {
+    if (seen(seen_arr, current, freelist_count)) {
+      serial_write_fstring("Cycle detected in freelist!\n");
+      return;
+    }
+    seen_arr[seen_idx] = current;
+
     serial_write_fstring("IDX={uint} SIZE={uint} ADDR={hex}\n", index,
-                         current->size, current);
+                         (current->size) + sizeof(mem_header), current);
     terminal_fstring("\nIDX={uint} SIZE={uint} ADDR={hex}\n", index,
-                     current->size, current);
+                     (current->size) + sizeof(mem_header), current);
     current = current->next;
     index++;
   }

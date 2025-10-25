@@ -256,7 +256,7 @@ void terminal_fstring(const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-  write_fstring(TERMINAL, format, args); 
+  write_fstring(TERMINAL, format, args);
   va_end(args);
 }
 

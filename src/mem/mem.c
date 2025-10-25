@@ -31,6 +31,8 @@ static uint64_t nvs = 0;
 static uint64_t exe = 0;
 static uint64_t highest_addr = 0;
 
+uint64_t hhdm_offset;
+
 void memmap_init(void) {
   struct limine_memmap_response *response = limine_memmap_request.response;
   if (!response) {
@@ -38,6 +40,7 @@ void memmap_init(void) {
     return;
   }
 
+  hhdm_offset = limine_hhdm_request.response->offset;
   serial_write_fstring("Memory map entries: {int}\n", response->entry_count);
 
   for (uint64_t i = 0; i < response->entry_count; i++) {
@@ -211,6 +214,9 @@ void print_paging(void) {
   struct limine_paging_mode_response *response =
       limine_paging_mode_request.response;
 
+  terminal_fstring("Kernel offset {uint}",
+                   limine_hhdm_request.response->offset);
+  terminal_fstring("Kernel offset {hex}", limine_hhdm_request.response->offset);
   terminal_fstring("\nPAGING\n");
   terminal_fstring("Mode : {uint}\n", response->mode);
   terminal_fstring("Revision: {uint}\n", response->revision);

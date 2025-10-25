@@ -15,6 +15,7 @@
 // 80GB of memory~
 // Should dynamically calculate and store in memory
 #define MAX_FRAMES (1024 * 1024 * 20)
+extern uint64_t hhdm_offset;
 
 void print_memmap(void);
 void print_paging(void);
