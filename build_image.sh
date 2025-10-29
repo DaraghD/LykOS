@@ -43,12 +43,14 @@ QEMU_CMD=(
     qemu-system-x86_64
     -m "$RAM"
     -cdrom "$ISO"
+    -boot d
     -d int
     -no-reboot
     -D qemu.lg
     -serial file:serial.lg #-serial stdio
     $DEBUG_FLAGS
-    -hda disk.img
+    -hda fat16.img
+    # -hda disk.img
 )
 
 # need to diswon and & for gdb and clion

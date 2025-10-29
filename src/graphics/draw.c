@@ -64,7 +64,7 @@ limine_framebuffer *get_framebuffer(void) {
   return framebuffer_request.response->framebuffers[0];
 }
 
-void put_pixel(size_t x, size_t y, size_t color) {
+void put_pixel(size_t x, size_t y, uint32_t color) {
   limine_framebuffer *framebuffer =
       framebuffer_request.response->framebuffers[0];
   size_t fb_width = framebuffer->width;
@@ -80,14 +80,14 @@ void draw_char(char c, size_t px, size_t py, uint32_t color) {
   draw_char_scaled(c, px, py, color, g_scale);
 }
 
-void fill_char(size_t px, size_t py) {
+void fill_char(size_t px, size_t py, uint32_t color) {
   size_t scale = g_scale;
   for (size_t row = 0; row < 8; row++) {
     for (size_t col = 0; col < 8; col++) {
       // Draw a scale x scale block instead of a single pixel
       for (size_t dy = 0; dy < scale; dy++) {
         for (size_t dx = 0; dx < scale; dx++) {
-          put_pixel(px + col * scale + dx, py + row * scale + dy, BLACK);
+          put_pixel(px + col * scale + dx, py + row * scale + dy, color);
         }
       }
     }

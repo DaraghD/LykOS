@@ -1,11 +1,14 @@
 #include "terminal.h"
+#include "drivers/fs/fat16.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "graphics/draw.h"
 #include "klib/kstring.h"
 #include "mem/arena.h"
+#include "mem/kalloc.h"
 #include "req.h" //lsp bug leave included
 #include "shell.h"
+#include "vendor/targa.h"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -65,22 +68,62 @@ typedef struct {
 cmd_history hist;
 static uint32_t hist_position = 0;
 
+void draw_logo(void) {
+  fat16_dir_entry_t targa_entry = *fat16_find_file("logo.tga");
+  char *file_buf = kalloc(targa_entry.file_size);
+  fat16_read_file(&targa_entry, file_buf);
+  unsigned int *data;
+  data = tga_parse((unsigned char *)file_buf, targa_entry.file_size);
+  uint64_t width = data[0];
+  uint64_t height = data[1];
+  serial_write_fstring("W: {uint}, H: {uint}", width, height);
+
+  size_t start_x = 0;
+  size_t start_y = 0;
+  for (int py = 0; py < height; py++) {
+    for (int px = 0; px < width; px++) {
+      // Get pixel from TGA (skip first 2 elements which are width/height)
+      uint32_t pixel = data[2 + (py * width + px)];
+      // uint32_t a = (pixel >> 24) & 0xFF;
+      uint8_t b = (pixel >> 0) & 0xFF;
+      uint8_t g = (pixel >> 8) & 0xFF;
+      uint8_t r = (pixel >> 16) & 0xFF;
+      uint8_t a = (pixel >> 24) & 0xFF;
+      uint32_t rgba = (r << 24) | (g << 16) | (b << 8) | a;
+
+      size_t draw_y = start_y + (height - 1 - py);
+      put_pixel(start_x + px, draw_y, rgba);
+    }
+  }
+  term_ypos = height;
+  kfree((uint64_t)file_buf);
+  kfree((uint64_t)data);
+}
+void draw_ascii(void) {
+  term_color = 0xFFFFFFFF;
+  draw_string_term(lykos_ascii);
+  draw_string_term("\nWelcome to LykOS\n\n");
+  term_color = GREEN;
+}
+
 void terminal_init(void) {
 
   serial_writeln("Starting terminal..");
   set_draw_scale(DEFAULT_TERMINAL_SCALE);
 
   term_color = 0xFFFFFFFF;
-  draw_string_term(lykos_ascii);
-  draw_string_term("\nWelcome to LykOS\n\n");
+  // draw_string_term(lykos_ascii);
+  draw_logo();
+  // terminal_newline();
 
+  draw_string_term("\nWelcome to LykOS\n\n");
   term_color = RED;
   draw_string_term("StarShell>");
 
   term_color = GREEN;
   draw_cursor_term();
 
-  hist.arena = arena_init(4096);
+  hist.arena = arena_init(200);
   hist.start = hist.arena.beg;
   hist.count = 0;
 
@@ -170,7 +213,7 @@ void terminal_process_input(uint16_t sc) {
     if (hist_position == 0) {
       // back to empty prompt
       clear_current_command();
-      fill_char(term_xpos, term_ypos);
+      fill_char(term_xpos, term_ypos, BLACK);
       draw_cursor_term();
       return;
     }
@@ -179,7 +222,7 @@ void terminal_process_input(uint16_t sc) {
     kstring *command = &hist.entries[idx];
 
     clear_current_command();
-    fill_char(term_xpos, term_ypos);
+    fill_char(term_xpos, term_ypos, BLACK);
     memset(command_content.buf, 0, command_content.len);
     for (uint16_t i = 0; i < command->len; i++) {
       append_char(&command_content, command->buf[i]);
@@ -203,7 +246,7 @@ void terminal_process_input(uint16_t sc) {
     kstring *command = &hist.entries[idx];
 
     clear_current_command();
-    fill_char(term_xpos, term_ypos);
+    fill_char(term_xpos, term_ypos, BLACK);
     memset(command_content.buf, 0, command_content.len);
     for (uint16_t i = 0; i < command->len; i++) {
       append_char(&command_content, command->buf[i]);
@@ -214,8 +257,8 @@ void terminal_process_input(uint16_t sc) {
   }
 
   if (c == ENTER) {
-    fill_char(term_xpos + 8 * g_scale, term_ypos);
-    fill_char(term_xpos, term_ypos);
+    fill_char(term_xpos + 8 * g_scale, term_ypos, BLACK);
+    fill_char(term_xpos, term_ypos, BLACK);
     history_add(&command_content);
     shell_execute(&command_content);
     draw_cursor_term();
@@ -228,9 +271,9 @@ void terminal_process_input(uint16_t sc) {
     if (line_not_empty) {
 
       command_content.len -= 1;
-      fill_char(term_xpos, term_ypos);
+      fill_char(term_xpos, term_ypos, BLACK);
       term_xpos -= 8 * g_scale;
-      fill_char(term_xpos, term_ypos);
+      fill_char(term_xpos, term_ypos, BLACK);
       draw_cursor_term();
 
       bool go_back_line = term_xpos == 0;
@@ -244,7 +287,7 @@ void terminal_process_input(uint16_t sc) {
 
   serial_write_fstring("Writing char: {char} \n", c);
   append_char(&command_content, c);
-  fill_char(term_xpos, term_ypos);
+  fill_char(term_xpos, term_ypos, BLACK);
   draw_char_term(c);
   serial_write_fstring("Command buffer size : {int}\n", command_content.len);
   draw_cursor_term();
@@ -268,9 +311,12 @@ void terminal_clearscreen(void) {
 }
 
 void draw_char_term(char c) {
+  if (c == '\0')
+    return;
   if (c == '\n') {
     term_ypos += 8 * g_scale;
     term_xpos = 0;
+    return;
   }
   draw_char(c, term_xpos, term_ypos, term_color);
   // advance the cursor
@@ -320,9 +366,9 @@ static void clear_current_command(void) {
   bool line_not_empty = command_content.len > 0;
   while (line_not_empty) {
     command_content.len -= 1;
-    fill_char(term_xpos, term_ypos);
+    fill_char(term_xpos, term_ypos, BLACK);
     term_xpos -= 8 * g_scale;
-    fill_char(term_xpos, term_ypos);
+    fill_char(term_xpos, term_ypos, BLACK);
     draw_cursor_term();
 
     bool go_back_line = term_xpos == 0;
