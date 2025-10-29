@@ -121,15 +121,26 @@ int strncmp(const char *s1, const char *s2, unsigned int n) {
   unsigned int i = 0;
   while (i < n && s1[i] && s2[i]) {
     if (s1[i] != s2[i]) {
-      return (unsigned char)s1[i] - (unsigned char)s2[i];
+      return s1[i] - s2[i];
     }
     i++;
   }
 
   if (i < n) {
-    return (unsigned char)s1[i] - (unsigned char)s2[i];
+    return s1[i] - s2[i];
   }
 
+  return 0;
+}
+
+int strcmp(const char *s1, const char *s2) {
+  int i = 0;
+  while (s1[i] && s2[i]) {
+    if (s1[i] != s2[i]) {
+      return s1[i] - s2[i];
+    }
+    i++;
+  }
   return 0;
 }
 
@@ -164,7 +175,7 @@ static char *intohex(uint64_t n, char *str, size_t width, bool trim_zero) {
 typedef void (*write_string_fptr)(const char *str);
 typedef void (*write_char_fptr)(char c);
 
-void write_fstring(io_type io, const char *format, va_list args){
+void write_fstring(io_type io, const char *format, va_list args) {
   write_string_fptr write_string = &serial_write;
   write_char_fptr write_char = &serial_write_char;
   switch (io) {
@@ -217,9 +228,22 @@ void write_fstring(io_type io, const char *format, va_list args){
       const char *s = va_arg(args, const char *);
       write_string(s);
       format += 5;
+    } else if (format[0] == '{' && strncmp(format, "{kstr}", 6) == 0) {
+      kstring *ks = va_arg(args, kstring *);
+      //? only works if memory is zerod?
+      write_string(ks->buf);
+      format += 6;
     } else {
       write_char(*format);
       format++;
     }
   }
+}
+
+int strlen(const char *s) {
+  size_t len = 0;
+  while (s[len] != '\0') {
+    len++;
+  }
+  return len;
 }

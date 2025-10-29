@@ -1,13 +1,13 @@
 #include "arch/x86_64/gdt.h"
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
-#include "drivers/ata.h"
+#include "drivers/fs/fat16.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "graphics/draw.h"
+#include "klib/kstring.h"
 #include "mem/kalloc.h"
 #include "mem/mem.h"
-#include "req.h"
 #include "terminal.h"
 #include <cpuid.h>
 #include <stdint.h>
@@ -24,28 +24,27 @@ void kmain(void) {
   pic_remap();
   memmap_init();
   pmm_init();
-
   graphics_init();
-  terminal_init();
   asm volatile("sti");
+  fat16_init(); // assumes fat on disk
+  // fat16_list_files();
 
-  alloc_frames(4);
+  terminal_init();
+  // serial_write_fstring("Found file: cluster {uint}, size
+  // {uint},name={str}\n",
+  //                      entry.first_cluster, entry.file_size, entry.name);
 
-  serial_write_fstring("Allocating 4098 bytes should be 2 pages\n");
-  kalloc(4098);
+  // fat16_dir_entry_t fat_entry = *fat16_find_file("FATREAD    ");
+  // fat16_dir_entry_t targa_entry = *fat16_find_file("LYKOS2  TGA");
 
-  void *k = kalloc(2000);
-  kfree((uint64_t)k);
+  // void *k = kalloc(999999);
+  // kfree((uint64_t)k);
+  //
+  const char *name = "test.txt";
+  char buf[11];
+  fat16_format83_name(name, buf);
 
-  uint16_t file_buf[256];
-  ata_read_sector(10, file_buf);
-  char *bytes = (char *)file_buf;
-
-  serial_writeln("\nREADING FILE : \n");
-  for (int i = 0; i < 512; i++) {
-    draw_char_term(bytes[i]);
-  }
-
+  uint32_t i = 0;
   while (1) {
     keyboard_process();
   }

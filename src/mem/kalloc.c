@@ -27,6 +27,7 @@ static bool seen(mem_header *seen_arr[], mem_header *curr, uint32_t len) {
   }
   return false;
 }
+
 // returns NULL if no suitable locations
 // returns amount of unused bytes in *unused_out
 static void *freelist_alloc(uint64_t size, uint64_t *unused_out) {
@@ -85,14 +86,19 @@ static void add_to_freelist(uint64_t addr, uint64_t size) {
 
 // returns NULL if allocation fails
 void *kalloc(uint64_t size) {
-  serial_write_fstring("Called with size {uint}\n", size);
   // allocate size + a u64 to keep track of size of the allocation
   uint64_t total = size + sizeof(uint64_t);
 
   void *mem = NULL;
   uint64_t unused = 0;
 
-  mem = freelist_alloc(total, &unused);
+  if (size > FRAME_SIZE) {
+    uint64_t frames = (total + FRAME_SIZE - 1) / FRAME_SIZE;
+    unused = frames * FRAME_SIZE - total;
+    mem = alloc_frames(frames);
+  } else {
+    mem = freelist_alloc(total, &unused);
+  }
 
   if (mem == NULL) {
     uint64_t frames = (total + FRAME_SIZE - 1) / FRAME_SIZE;
@@ -105,12 +111,14 @@ void *kalloc(uint64_t size) {
                          total);
     return NULL;
   }
+  // memset(mem, 0, sizeof(mem_header));
+  memset(mem, 0, size);
   uint64_t unused_addr = (uint64_t)mem + total;
 
-  serial_write_fstring("\n UNUSED MEMORY FROM PAGES : {uint}\n", unused);
   serial_write_fstring("Requested={uint}\n", size);
   serial_write_fstring("Allocating={uint}\n", size + sizeof(uint64_t));
   serial_write_fstring("Allocation starts at {hex}\n", (uint64_t)mem);
+  serial_write_fstring("Unused={uint}\n", unused);
   serial_write_fstring("Unused starts at {hex}\n", (uint64_t)unused_addr);
 
   // add unused memory to the freelist
@@ -137,10 +145,28 @@ void kfree(uint64_t ptr) {
   debug_total_allocated -= size;
 }
 
+void *krealloc(void *ptr, size_t size) {
+  if (ptr == NULL) {
+    return kalloc(size);
+  }
+  // allocate new block of size size
+  // memcpy ptr with ptrsize to size
+
+  uint64_t ptr_size = ((uint64_t *)ptr)[-1];
+  serial_write_fstring("Resizing: ptrsize={uint}\n", ptr_size);
+  void *new_alloc = kalloc(size);
+  if (new_alloc == NULL) {
+    serial_write_fstring("Resizing: failed to allocate memory\n");
+    return NULL;
+  }
+  memcpy(new_alloc, ptr, ptr_size);
+  serial_write_fstring("Resizing: copying to new allocation\n");
+  return new_alloc;
+}
+
 // debug
 
 void debug_freelist(void) {
-  serial_write_fstring("\n FREELIST DEBUG \n");
   int index = 0;
   mem_header *current = free_list_head;
   mem_header *seen_arr[freelist_count];
@@ -154,7 +180,7 @@ void debug_freelist(void) {
 
     serial_write_fstring("IDX={uint} SIZE={uint} ADDR={hex}\n", index,
                          (current->size) + sizeof(mem_header), current);
-    terminal_fstring("\nIDX={uint} SIZE={uint} ADDR={hex}\n", index,
+    terminal_fstring("IDX={uint} SIZE={uint} ADDR={hex}\n", index,
                      (current->size) + sizeof(mem_header), current);
     current = current->next;
     index++;
@@ -168,9 +194,9 @@ void debug_freelist(void) {
 }
 
 void print_allocation_stats(void) {
-  terminal_fstring("Total memory allocated :(KB) {uint}\n",
+  terminal_fstring("Total memory allocated (KB): {uint}\n",
                    TO_KB(debug_total_allocated));
 
-  serial_write_fstring("Total memory allocated :(KB) {uint}\n",
+  serial_write_fstring("Total memory allocated (KB): {uint}\n",
                        TO_KB(debug_total_allocated));
 }

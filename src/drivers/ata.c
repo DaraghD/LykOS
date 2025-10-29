@@ -1,6 +1,7 @@
 #include "ata.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
+#include "fs/fs.h"
 #include <stdint.h>
 
 static inline void ata_wait_ready(void) {
@@ -10,7 +11,8 @@ static inline void ata_wait_ready(void) {
     ;
 }
 
-void ata_read_sector(uint32_t lba, uint16_t *buffer) {
+// reads 512 bytes into buffer
+void ata_read_sector(uint32_t lba, uint8_t *buffer) {
   outb(ATA_DRIVE_SELECT_PORT, ATA_DRIVE_MASTER | ((lba >> 24) & 0x0F));
 
   outb(ATA_SECTOR_COUNT_PORT, 1);
@@ -41,12 +43,14 @@ void ata_read_sector(uint32_t lba, uint16_t *buffer) {
       serial_writeln("ATA error: Bad Block");
   }
 
+  uint16_t *buf16 = (uint16_t *)buffer;
   for (int i = 0; i < 256; i++) {
-    buffer[i] = inw(ATA_DATA_PORT);
+    buf16[i] = inw(ATA_DATA_PORT);
   }
 }
 
-void ata_write_sector(uint32_t lba, uint16_t *buffer) {
+// write 512 bytes to buffer
+void ata_write_sector(uint32_t lba, uint8_t *buffer) {
   outb(ATA_DRIVE_SELECT_PORT, ATA_DRIVE_MASTER | ((lba >> 24) & 0x0F));
 
   outb(ATA_SECTOR_COUNT_PORT, 1);
@@ -58,8 +62,9 @@ void ata_write_sector(uint32_t lba, uint16_t *buffer) {
 
   ata_wait_ready();
 
+  uint16_t *buf16 = (uint16_t *)buffer;
   for (int i = 0; i < 256; i++) {
-    outw(ATA_DATA_PORT, buffer[i]);
+    outw(ATA_DATA_PORT, buf16[i]);
   }
 
   outb(ATA_COMMAND_PORT, ATA_CMD_FLUSH_CACHE);
@@ -67,3 +72,7 @@ void ata_write_sector(uint32_t lba, uint16_t *buffer) {
   while (inb(ATA_STATUS_PORT) & ATA_STATUS_BSY)
     ;
 }
+
+// buffer must be big enough for count * sector size
+void ata_read_sectors(uint32_t lba, uint32_t count, uint16_t *buffer) {}
+void ata_write_sectors(uint32_t lba, uint32_t count, uint16_t *buffer) {}

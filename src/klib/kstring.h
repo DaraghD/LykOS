@@ -30,4 +30,6 @@ void append_long(kstring *b, long x);
 void append_char(kstring *b, char c);
 bool kstrncmp(kstring* ks, const char* cmp, int len);
 int strncmp(const char *s1, const char *s2, unsigned int n);
+int strcmp(const char *s1, const char *s2);
+int strlen(const char *s);
 void write_fstring(io_type io, const char *format, va_list args); 

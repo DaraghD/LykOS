@@ -1,5 +1,6 @@
 #include "mem.h"
 #include "drivers/serial.h"
+#include "mem/kalloc.h"
 #include "req.h"
 #include "terminal.h"
 #include "vendor/limine.h"
@@ -206,8 +207,9 @@ void print_memory_stats(void) {
     }
   }
   uint64_t free_frames_MB = TO_MB(free_frames * FRAME_SIZE);
-  terminal_fstring("Free memory MB: {uint}\n", free_frames_MB);
+  terminal_fstring("Free memory (MB): {uint}\n", free_frames_MB);
   terminal_fstring("Free pages: {uint}\n", free_frames);
+  print_allocation_stats();
 }
 
 void print_paging(void) {

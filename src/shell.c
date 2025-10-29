@@ -1,5 +1,6 @@
 #include "shell.h"
 #include "arch/x86_64/util.h"
+#include "drivers/fs/vfs.h"
 #include "drivers/serial.h"
 #include "graphics/draw.h"
 #include "klib/kstring.h"
@@ -43,10 +44,36 @@ void shell_init(void) {
 }
 
 void shell_execute(kstring *line) {
+  uint32_t temp_color = term_color;
+  term_color = WHITE;
   term_ypos += 8 * g_scale;
   term_xpos = 0;
 
-  if (kstrncmp(line, "exit", 4))
+  if (kstrncmp(line, "ls", 2))
+    list_files(&cwd);
+
+  else if (kstrncmp(line, "cat", 3)) {
+    // TODO: make this also apppend cwd to it
+    //  e.g cat abc, cat + space is 4
+    //  full len is 7, 7-4 = 3, len(abc) is 3
+    uint16_t path_len = line->len - 4;
+    char buf[path_len + 1];
+    kstring path = KSTRING(buf, path_len);
+    for (uint16_t i = 0; i < path_len; i++) {
+      path.buf[i] = line->buf[i + 4];
+      append_char(&path, line->buf[i + 4]);
+    }
+    path.buf[path_len + 1] = '\0';
+    cat_file(&path);
+  }
+
+  else if (kstrncmp(line, "ascii", 5))
+    draw_ascii();
+
+  else if (kstrncmp(line, "logo", 4))
+    draw_logo();
+
+  else if (kstrncmp(line, "exit", 4))
     qemu_shutdown();
 
   else if (kstrncmp(line, "pwd", 3))
@@ -88,5 +115,6 @@ void shell_execute(kstring *line) {
   else if (line->len >= 1)
     terminal_fstring("Unknown command\n");
 
+  term_color = temp_color;
   terminal_newline();
 }
