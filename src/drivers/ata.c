@@ -1,7 +1,6 @@
 #include "ata.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
-#include "fs/fs.h"
 #include <stdint.h>
 
 static inline void ata_wait_ready(void) {
