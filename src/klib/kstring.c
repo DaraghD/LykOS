@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "req.h"
+#include "mem/kalloc.h"
 
 void append(kstring *b, char *src, int len) {
   int avail = b->cap - b->len;
@@ -231,7 +233,11 @@ void write_fstring(io_type io, const char *format, va_list args) {
     } else if (format[0] == '{' && strncmp(format, "{kstr}", 6) == 0) {
       kstring *ks = va_arg(args, kstring *);
       //? only works if memory is zerod?
-      write_string(ks->buf);
+      char *buf = kalloc(ks->len + 1);
+      memcpy(buf, ks->buf, ks->len);
+      buf[ks->len] = '\0';
+      write_string(buf);
+      kfree((uint64_t) buf);
       format += 6;
     } else {
       write_char(*format);

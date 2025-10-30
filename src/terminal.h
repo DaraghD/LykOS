@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "klib/kstring.h"
 
 extern char scancode_to_ascii[128];
 extern uint32_t term_color;
@@ -15,3 +16,4 @@ void draw_string_term(const char *str);
 void terminal_clearscreen(void);
 void draw_ascii(void);
 void draw_logo(void);
+void history_add(const kstring *command);

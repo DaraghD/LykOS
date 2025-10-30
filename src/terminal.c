@@ -130,7 +130,7 @@ void terminal_init(void) {
   shell_init();
 }
 
-static void history_add(const kstring *command) {
+void history_add(const kstring *command) {
   if (hist.count == 100) {
     // reset back to start
     hist.arena.beg = hist.start;
@@ -159,11 +159,16 @@ void terminal_newline(void) {
 }
 
 static void print_history(void) {
+  terminal_fstring("\n");
   for (uint32_t i = 0; i < hist.count; i++) {
     kstring *command = &hist.entries[i];
-    draw_kstring_term(command);
-    draw_string_term("\n");
+    terminal_fstring("{kstr}\n", command);
   }
+}
+
+bool is_alphanum(char c) {
+  if (c >= ' ' && c <= 'z') return true;
+  else return false;
 }
 
 #define BACKSPACE '\b'
@@ -202,21 +207,13 @@ void terminal_process_input(uint16_t sc) {
   if (sc == DOWN_ARROW) {
     if (hist.count == 0)
       return;
+    if (hist_position <= 0)
+      return;
 
-    // only move down if we're not already at current input
-    if (hist_position > 0)
-      hist_position--;
+    hist_position--;
 
     serial_write_fstring("ARROW DOWN: hist_pos={uint}, count={uint}\n",
                          hist_position, hist.count);
-
-    if (hist_position == 0) {
-      // back to empty prompt
-      clear_current_command();
-      fill_char(term_xpos, term_ypos, BLACK);
-      draw_cursor_term();
-      return;
-    }
 
     uint32_t idx = hist.count - hist_position;
     kstring *command = &hist.entries[idx];
@@ -230,14 +227,13 @@ void terminal_process_input(uint16_t sc) {
     }
     draw_cursor_term();
     return;
-  }
-  if (sc == UP_ARROW) {
-    if (hist.count == 0)
+  } else if (sc == UP_ARROW) {
+    if (hist.count == 0) 
+      return;
+    if (hist_position == hist.count)
       return;
 
-    // only move up if we haven't reached the oldest
-    if (hist_position < hist.count)
-      hist_position++;
+    hist_position++;
 
     serial_write_fstring("ARROW UP: hist_pos={uint}, count={uint}\n",
                          hist_position, hist.count);
@@ -254,22 +250,16 @@ void terminal_process_input(uint16_t sc) {
     }
     draw_cursor_term();
     return;
-  }
-
-  if (c == ENTER) {
+  } else if (c == ENTER) {
     fill_char(term_xpos + 8 * g_scale, term_ypos, BLACK);
     fill_char(term_xpos, term_ypos, BLACK);
-    history_add(&command_content);
     shell_execute(&command_content);
     draw_cursor_term();
     return;
-  }
-
-  if (c == BACKSPACE) {
-    command_content.buf[command_content.len - 1] = '\0';
+  } else if (c == BACKSPACE) {
     bool line_not_empty = command_content.len > 0;
     if (line_not_empty) {
-
+      command_content.buf[command_content.len - 1] = '\0';
       command_content.len -= 1;
       fill_char(term_xpos, term_ypos, BLACK);
       term_xpos -= 8 * g_scale;
@@ -283,7 +273,14 @@ void terminal_process_input(uint16_t sc) {
       }
     }
     return;
+  } else if (c == LEFT_ARROW) {
+    return;
+  } else if (c == RIGHT_ARROW) {
+    return;
   }
+
+  if (!is_alphanum(c)) return;
+ 
 
   serial_write_fstring("Writing char: {char} \n", c);
   append_char(&command_content, c);
@@ -306,8 +303,6 @@ void terminal_fstring(const char *format, ...) {
 void terminal_clearscreen(void) {
   clear_screen(get_framebuffer(), BLACK);
   term_ypos = 0;
-  terminal_newline();
-  draw_cursor_term();
 }
 
 void draw_char_term(char c) {

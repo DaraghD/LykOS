@@ -112,9 +112,15 @@ void shell_execute(kstring *line) {
   else if (kstrncmp(line, "freelist", 8))
     debug_freelist();
 
-  else if (line->len >= 1)
-    terminal_fstring("Unknown command\n");
+  else {
+	  terminal_fstring("Unknown command\n");
+	  goto done;
+  }
 
+  history_add(line);
+
+done:
   term_color = temp_color;
   terminal_newline();
+  return;
 }
