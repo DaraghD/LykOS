@@ -3,6 +3,7 @@
 #include "drivers/serial.h"
 #include "mem/arena.h"
 #include "mem/kalloc.h"
+#include "mem/mem.h"
 #include "req.h"
 #include <stdint.h>
 
@@ -48,6 +49,8 @@ void fat16_init(void) {
   serial_write_fstring("Bytes per sector: {uint}\n", bpb.bytes_per_sector);
   serial_write_fstring("Sectors per cluster: {uint}\n",
                        bpb.sectors_per_cluster);
+  serial_write_fstring("Size of FAT partition (MB) {uint}\n",
+                       TO_MB(bpb.total_sectors_short * bpb.bytes_per_sector));
 }
 
 uint32_t fat16_cluster_to_lba(uint16_t cluster) {
@@ -159,9 +162,8 @@ uint32_t fat16_get_entries(fat16_dir_entry_t *files) {
       break; // end of entries
     if (entry->name[0] == 0xE5)
       continue; // deleted
-    if (entry->attr == 0x0F) {
+    if (entry->attr == 0x0F)
       continue; // long filename
-    }
     files[count++] = *entry;
 
     char name[9], ext[4];
