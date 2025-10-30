@@ -166,11 +166,6 @@ static void print_history(void) {
   }
 }
 
-bool is_alphanum(char c) {
-  if (c >= ' ' && c <= 'z') return true;
-  else return false;
-}
-
 #define BACKSPACE '\b'
 #define ENTER '\n'
 void terminal_process_input(uint16_t sc) {
@@ -207,13 +202,21 @@ void terminal_process_input(uint16_t sc) {
   if (sc == DOWN_ARROW) {
     if (hist.count == 0)
       return;
-    if (hist_position <= 0)
-      return;
 
-    hist_position--;
+    // only move down if we're not already at current input
+    if (hist_position > 0)
+      hist_position--;
 
     serial_write_fstring("ARROW DOWN: hist_pos={uint}, count={uint}\n",
                          hist_position, hist.count);
+
+    if (hist_position == 0) {
+      // back to empty prompt
+      clear_current_command();
+      fill_char(term_xpos, term_ypos, BLACK);
+      draw_cursor_term();
+      return;
+    }
 
     uint32_t idx = hist.count - hist_position;
     kstring *command = &hist.entries[idx];
@@ -227,13 +230,14 @@ void terminal_process_input(uint16_t sc) {
     }
     draw_cursor_term();
     return;
-  } else if (sc == UP_ARROW) {
-    if (hist.count == 0) 
-      return;
-    if (hist_position >= hist.count)
+  }
+  if (sc == UP_ARROW) {
+    if (hist.count == 0)
       return;
 
-    hist_position++;
+    // only move up if we haven't reached the oldest
+    if (hist_position < hist.count)
+      hist_position++;
 
     serial_write_fstring("ARROW UP: hist_pos={uint}, count={uint}\n",
                          hist_position, hist.count);
@@ -250,17 +254,22 @@ void terminal_process_input(uint16_t sc) {
     }
     draw_cursor_term();
     return;
-  } else if (c == ENTER) {
+  }
+
+  if (c == ENTER) {
     fill_char(term_xpos + 8 * g_scale, term_ypos, BLACK);
     fill_char(term_xpos, term_ypos, BLACK);
     history_add(&command_content);
     shell_execute(&command_content);
     draw_cursor_term();
     return;
-  } else if (c == BACKSPACE) {
+  }
+
+  if (c == BACKSPACE) {
+    command_content.buf[command_content.len - 1] = '\0';
     bool line_not_empty = command_content.len > 0;
     if (line_not_empty) {
-      command_content.buf[command_content.len - 1] = '\0';
+
       command_content.len -= 1;
       fill_char(term_xpos, term_ypos, BLACK);
       term_xpos -= 8 * g_scale;
@@ -274,14 +283,7 @@ void terminal_process_input(uint16_t sc) {
       }
     }
     return;
-  } else if (c == LEFT_ARROW) {
-    return;
-  } else if (c == RIGHT_ARROW) {
-    return;
   }
-
-  if (!is_alphanum(c)) return;
- 
 
   serial_write_fstring("Writing char: {char} \n", c);
   append_char(&command_content, c);

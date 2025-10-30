@@ -92,15 +92,14 @@ void *kalloc(uint64_t size) {
   void *mem = NULL;
   uint64_t unused = 0;
 
-  // if (size > FRAME_SIZE) {
-  //   uint64_t frames = (total + FRAME_SIZE - 1) / FRAME_SIZE;
-  //   unused = frames * FRAME_SIZE - total;
-  //   mem = alloc_frames(frames);
-  // } else {
-  //   mem = freelist_alloc(total, &unused);
-  // }
-  //
-  mem = freelist_alloc(total, &unused);
+  if (size > FRAME_SIZE) {
+    uint64_t frames = (total + FRAME_SIZE - 1) / FRAME_SIZE;
+    unused = frames * FRAME_SIZE - total;
+    mem = alloc_frames(frames);
+  } else {
+    mem = freelist_alloc(total, &unused);
+  }
+
   if (mem == NULL) {
     uint64_t frames = (total + FRAME_SIZE - 1) / FRAME_SIZE;
     unused = frames * FRAME_SIZE - total;
