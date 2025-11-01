@@ -36,7 +36,7 @@ if [[ "$1" == "dbg" ]]; then
 fi
 
 ISO="image.iso"
-DISK="disk.img"
+DISK="fat16.img"
 RAM="4G"
 
 QEMU_CMD=(
@@ -49,8 +49,7 @@ QEMU_CMD=(
     -D qemu.lg
     -serial file:serial.lg #-serial stdio
     $DEBUG_FLAGS
-    -hda fat16.img
-    # -hda disk.img
+    -hda "$DISK"
 )
 
 # need to diswon and & for gdb and clion
