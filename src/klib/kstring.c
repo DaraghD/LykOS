@@ -1,11 +1,11 @@
 #include "kstring.h"
 #include "drivers/serial.h"
+#include "mem/kalloc.h"
+#include "req.h"
 #include "terminal.h"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "req.h"
-#include "mem/kalloc.h"
 
 void append(kstring *b, char *src, int len) {
   int avail = b->cap - b->len;
@@ -236,8 +236,13 @@ void write_fstring(io_type io, const char *format, va_list args) {
       char *buf = kalloc(ks->len + 1);
       memcpy(buf, ks->buf, ks->len);
       buf[ks->len] = '\0';
+      // char buf[256];
+      // for (int i = 0; i < ks->len; i++) {
+      //   buf[i] = ks->buf[i];
+      // }
+      buf[ks->len] = '\0';
       write_string(buf);
-      kfree((uint64_t) buf);
+      kfree((uint64_t)buf);
       format += 6;
     } else {
       write_char(*format);

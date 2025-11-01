@@ -210,6 +210,7 @@ void debug_graphics(void) {
   uint32_t center = framebuffer->width / 2;
   center -= 100;
 
+  uint8_t prev_scale = g_scale;
   set_draw_scale(3);
   draw_string("Hello Mars, from LykOS", center, 0, BLUE);
   char height_buf[128];
@@ -222,4 +223,5 @@ void debug_graphics(void) {
   APPEND_STRL(&width_string, "WIDTH: ", framebuffer->width);
   APPEND_STRL(&width_string, " pitch: ", framebuffer->pitch);
   draw_kstring(&width_string, center, 48, GREEN);
+  set_draw_scale(prev_scale);
 }

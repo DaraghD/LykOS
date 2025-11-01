@@ -73,6 +73,9 @@ void shell_execute(kstring *line) {
   else if (kstrncmp(line, "logo", 4))
     draw_logo();
 
+  else if (kstrncmp(line, "gfx", 3))
+    debug_graphics();
+
   else if (kstrncmp(line, "exit", 4))
     qemu_shutdown();
 
@@ -113,13 +116,13 @@ void shell_execute(kstring *line) {
     debug_freelist();
 
   else {
-	  terminal_fstring("Unknown command\n");
-	  goto done;
+    terminal_fstring("Unknown command\n");
+    goto skip_history;
   }
 
   history_add(line);
 
-done:
+skip_history:
   term_color = temp_color;
   terminal_newline();
   return;

@@ -123,7 +123,7 @@ void terminal_init(void) {
   term_color = GREEN;
   draw_cursor_term();
 
-  hist.arena = arena_init(200);
+  hist.arena = arena_init(8000);
   hist.start = hist.arena.beg;
   hist.count = 0;
 
@@ -167,8 +167,10 @@ static void print_history(void) {
 }
 
 bool is_alphanum(char c) {
-  if (c >= ' ' && c <= 'z') return true;
-  else return false;
+  if (c >= ' ' && c <= 'z')
+    return true;
+  else
+    return false;
 }
 
 #define BACKSPACE '\b'
@@ -201,6 +203,7 @@ void terminal_process_input(uint16_t sc) {
 
   if (c == 'l' && ctrl) {
     terminal_clearscreen();
+    terminal_newline();
     return;
   }
 
@@ -228,7 +231,7 @@ void terminal_process_input(uint16_t sc) {
     draw_cursor_term();
     return;
   } else if (sc == UP_ARROW) {
-    if (hist.count == 0) 
+    if (hist.count == 0)
       return;
     if (hist_position == hist.count)
       return;
@@ -255,6 +258,7 @@ void terminal_process_input(uint16_t sc) {
     fill_char(term_xpos, term_ypos, BLACK);
     shell_execute(&command_content);
     draw_cursor_term();
+    hist_position = 0;
     return;
   } else if (c == BACKSPACE) {
     bool line_not_empty = command_content.len > 0;
@@ -279,8 +283,8 @@ void terminal_process_input(uint16_t sc) {
     return;
   }
 
-  if (!is_alphanum(c)) return;
- 
+  if (!is_alphanum(c))
+    return;
 
   serial_write_fstring("Writing char: {char} \n", c);
   append_char(&command_content, c);
@@ -288,6 +292,7 @@ void terminal_process_input(uint16_t sc) {
   draw_char_term(c);
   serial_write_fstring("Command buffer size : {int}\n", command_content.len);
   draw_cursor_term();
+  hist_position = 0;
 }
 
 // drawing

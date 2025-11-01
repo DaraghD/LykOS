@@ -84,6 +84,7 @@ static void add_to_freelist(uint64_t addr, uint64_t size) {
   freelist_count++;
 }
 
+// TODO: allignment bugs?
 // returns NULL if allocation fails
 void *kalloc(uint64_t size) {
   // allocate size + a u64 to keep track of size of the allocation
@@ -167,6 +168,7 @@ void *krealloc(void *ptr, size_t size) {
 // debug
 
 void debug_freelist(void) {
+  serial_write_fstring("freelist_size={uint}\n", debug_freelist_size);
   int index = 0;
   mem_header *current = free_list_head;
   mem_header *seen_arr[freelist_count];

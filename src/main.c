@@ -2,6 +2,7 @@
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
 #include "drivers/fs/fat16.h"
+#include "drivers/fs/vfs.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "graphics/draw.h"
@@ -43,6 +44,12 @@ void kmain(void) {
   const char *name = "test.txt";
   char buf[11];
   fat16_format83_name(name, buf);
+
+  // allocs
+  for (int i = 0; i < 1000; i++) {
+    void *x = kalloc(i);
+    kfree((uint64_t)x);
+  }
 
   uint32_t i = 0;
   while (1) {
