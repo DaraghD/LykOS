@@ -1,8 +1,9 @@
 # LykOS
 
 ### Build instructions  
+```git clone --recursive https://github.com/daraghd/lykos```
 ```make -C limine```  
-```./build_image.sh```
+```./build.sh```
 
 ### Requires
 - GCC

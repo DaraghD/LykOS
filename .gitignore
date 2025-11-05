@@ -5,7 +5,5 @@ iso_root/
 image.iso
 .cache
 compile_commands.json
-serial.log
-qemu.log
-
-
+serial.lg
+qemu.lg

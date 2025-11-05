@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 # call makefile to compile
-make
+make -j$(nproc)
 
 # assumes limine is built and executable at ./limine/limine
 
