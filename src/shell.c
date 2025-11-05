@@ -1,13 +1,18 @@
 #include "shell.h"
 #include "arch/x86_64/util.h"
-#include "drivers/fs/vfs.h"
 #include "drivers/serial.h"
+#include "fs/vfs.h"
 #include "graphics/draw.h"
 #include "klib/kstring.h"
 #include "mem/kalloc.h"
 #include "mem/mem.h"
 #include "req.h"
+#include "user/elf.h"
+// #define STB_DS_IMPLEMENTATION
+// #define STBDS_REALLOC(context, ptr, size) krealloc(ptr, size)
+// #define STBDS_FREE(context, ptr) kfree(ptr)
 #include "terminal.h"
+#include "vendor/stb_ds.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -32,6 +37,59 @@ static void print_cwd(void) {
   terminal_fstring("{str}\n", cwd.buf);
 }
 
+static int cat_file(kstring *path) {
+  u64 file_size = 0;
+  char *file_buf = read_file(path, &file_size);
+  if (file_buf == NULL)
+    return -1;
+  for (u32 i = 0; i < file_size; i++) {
+    terminal_fstring("{char}", file_buf[i]);
+  }
+  kfree(file_buf);
+  return 0;
+}
+
+// assumes first word is the command
+// args are space seperated
+typedef struct {
+  kstring args[16];
+  u8 count;
+} args_list;
+
+bool parse_args(kstring *line, args_list *out) {
+  out->count = 0;
+  u16 i = 0;
+
+  // skip first word and spaces, i=start of 2nd word
+  while (i < line->len && line->buf[i] != ' ') {
+    i++;
+  }
+  while (i < line->len && line->buf[i] == ' ') {
+    i++;
+  }
+
+  while (i < line->len && out->count < 16) {
+    while (i < line->len && line->buf[i] == ' ') {
+      i++;
+    }
+
+    if (i >= line->len)
+      break;
+
+    u16 start = i;
+
+    while (i < line->len && line->buf[i] != ' ') {
+      i++;
+    }
+
+    out->args[out->count].buf = &line->buf[start];
+    out->args[out->count].len = i - start;
+    out->count++;
+  }
+
+  return out->count > 0;
+}
+
 void shell_init(void) {
   char init_path_buf[256];
   kstring init_path = KSTRING(init_path_buf, 256);
@@ -44,27 +102,59 @@ void shell_init(void) {
 }
 
 void shell_execute(kstring *line) {
-  uint32_t temp_color = term_color;
+  args_list args;
+  parse_args(line, &args);
+
+  u32 temp_color = term_color;
   term_color = WHITE;
   term_ypos += 8 * g_scale;
   term_xpos = 0;
 
-  if (kstrncmp(line, "ls", 2))
+  if (kstrncmp(line, "cd", 2)) {
+    if (!parse_args(line, &args)) {
+      terminal_fstring("Path missing\n");
+      goto skip_history;
+    }
+
+    kstring path = args.args[0];
+    bool is_valid = valid_path(&path);
+    if (path.buf[0] != '/')
+      ; // relative, append cwd
+    else
+      ;
+
+    char *arr = NULL;
+
+  } else if (kstrncmp(line, "ls", 2))
     list_files(&cwd);
 
   else if (kstrncmp(line, "cat", 3)) {
-    // TODO: make this also apppend cwd to it
-    //  e.g cat abc, cat + space is 4
-    //  full len is 7, 7-4 = 3, len(abc) is 3
-    uint16_t path_len = line->len - 4;
-    char buf[path_len + 1];
-    kstring path = KSTRING(buf, path_len);
-    for (uint16_t i = 0; i < path_len; i++) {
-      path.buf[i] = line->buf[i + 4];
-      append_char(&path, line->buf[i + 4]);
+    if (!parse_args(line, &args)) {
+      terminal_fstring("File needed to cat\n");
+      goto skip_history;
     }
-    path.buf[path_len + 1] = '\0';
+
+    kstring path = args.args[0];
     cat_file(&path);
+
+  } else if (kstrncmp(line, "exec", 4)) {
+    if (!parse_args(line, &args)) {
+      terminal_fstring("File needed to exec\n");
+      goto skip_history;
+    }
+
+    kstring path = args.args[0];
+    u64 size = 0;
+    void *file = read_file(&path, &size);
+    serial_write_fstring("Exec elf : {kstr}", &path);
+
+    if (file == NULL) {
+      serial_write_fstring("cant find file?");
+      terminal_fstring("Can't find file\n");
+      goto skip_history;
+    }
+    exec_elf(file);
+    kfree(file);
   }
 
   else if (kstrncmp(line, "ascii", 5))
