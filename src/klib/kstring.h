@@ -1,6 +1,6 @@
 #pragma once
-#include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define KSTRING(buf, cap) {buf, cap, 0, 0}
 #define APPEND_STR(buf, str) append(buf, str, sizeof(str)-1)
@@ -33,3 +33,4 @@ int strncmp(const char *s1, const char *s2, unsigned int n);
 int strcmp(const char *s1, const char *s2);
 int strlen(const char *s);
 void write_fstring(io_type io, const char *format, va_list args); 
+void to_upper(kstring* ks);

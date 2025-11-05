@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static void free(unsigned int *p) { kfree((uint64_t)p); }
+static void free(unsigned int *p) { kfree(p); }
 
 /**
  * Credits to https://wiki.osdev.org/Loading_Icons

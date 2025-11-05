@@ -22,9 +22,9 @@ extern volatile bool arrow_left;
 extern volatile bool arrow_right;
 
 // Circular buffer for scancodes
-extern volatile uint8_t keyboard_buffer[KEYBOARD_BUFFER_SIZE];
-extern volatile uint8_t keyboard_head;
-extern volatile uint8_t keyboard_tail;
+extern volatile u8 keyboard_buffer[KEYBOARD_BUFFER_SIZE];
+extern volatile u8 keyboard_head;
+extern volatile u8 keyboard_tail;
 
 void keyboard_process(void);
 __attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame);

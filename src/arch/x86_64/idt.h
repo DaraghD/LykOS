@@ -1,30 +1,31 @@
 #pragma once
+#include "req.h"
 #include <stdint.h>
 
 typedef struct {
-    uint16_t limit;
-    uint64_t base;
+    u16 limit;
+    u64 base;
 } __attribute__((packed)) IDTPointer;
 
 typedef struct {
-    uint16_t offset_low;
-    uint16_t selector;
-    uint8_t  ist;
-    uint8_t  type_attr;
-    uint16_t offset_mid;
-    uint32_t offset_high;
-    uint32_t zero;
+    u16 offset_low;
+    u16 selector;
+    u8  ist;
+    u8  type_attr;
+    u16 offset_mid;
+    u32 offset_high;
+    u32 zero;
 } __attribute__((packed)) IDTEntry;
 
 typedef struct {
-    uint64_t rip;
-    uint64_t cs;
-    uint64_t rflags;
-    uint64_t rsp;
-    uint64_t ss;
+    u64 rip;
+    u64 cs;
+    u64 rflags;
+    u64 rsp;
+    u64 ss;
 } interrupt_frame;
 
-void set_idt_gate(uint32_t index, uint64_t handler, uint16_t selector, uint8_t flags);
+void set_idt_gate(u32 index, u64 handler, u16 selector, u8 flags);
 void idt_init(void);
 void idt_remap_init(void);
 

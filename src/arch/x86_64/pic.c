@@ -12,8 +12,8 @@
 #define PIC2_DATA (PIC2 + 1)
 
 void pic_remap(void) {
-  uint8_t a1 = inb(PIC1_DATA); // save masks
-  uint8_t a2 = inb(PIC2_DATA);
+  u8 a1 = inb(PIC1_DATA); // save masks
+  u8 a2 = inb(PIC2_DATA);
 
   outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
   iowait();

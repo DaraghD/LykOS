@@ -1,5 +1,6 @@
 #pragma once
 
+#include "req.h"
 #include <stdint.h>
 
 #define GDT_NULL 0
@@ -10,16 +11,16 @@
 #define GDT_DATA_SELECTOR 0x10
 
 typedef struct {
-    uint16_t limit_low;
-    uint16_t base_low;
-    uint8_t  base_middle;
-    uint8_t  access;
-    uint8_t  granularity;
-    uint8_t  base_high;
+    u16 limit_low;
+    u16 base_low;
+    u8  base_middle;
+    u8  access;
+    u8  granularity;
+    u8  base_high;
 } __attribute__((packed)) GDTEntry;
 
 typedef struct{
-    uint16_t limit; // size of GDT - 1
+    u16 limit; // size of GDT - 1
     GDTEntry* address; // ptr to GDT itself
 } __attribute__((packed)) GDTPtr;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "req.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,7 +16,7 @@
 // 80GB of memory~
 // Should dynamically calculate and store in memory
 #define MAX_FRAMES (1024 * 1024 * 20)
-extern uint64_t hhdm_offset;
+extern u64 hhdm_offset;
 
 void print_memmap(void);
 void print_paging(void);
@@ -24,4 +25,4 @@ void *pmm_alloc_frame(void);
 void pmm_free_frame(void);
 void pmm_init(void);
 void print_memory_stats(void);
-void *alloc_frames(uint64_t amount);
+void *alloc_frames(u64 amount);

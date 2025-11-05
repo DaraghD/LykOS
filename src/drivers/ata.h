@@ -1,5 +1,6 @@
 #pragma once
 
+#include "req.h"
 #include <stdint.h>
 
 // max sectors for lba28 = 268,435,456
@@ -29,5 +30,5 @@
 #define ATA_IS_BUSY(status) ((status) & ATA_STATUS_BSY)
 #define ATA_HAS_ERROR(status) ((status) & ATA_STATUS_ERR)
 
-void ata_read_sector(uint32_t lba, uint8_t *buffer);
-void ata_write_sector(uint32_t lba, uint8_t *buffer);
+void ata_read_sector(u32 lba, u8 *buffer);
+void ata_write_sector(u32 lba, u8 *buffer);

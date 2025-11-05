@@ -37,11 +37,11 @@ static void hcf(void) {
   }
 }
 
-uint32_t g_width;
-uint32_t g_height;
+u32 g_width;
+u32 g_height;
 
-uint8_t g_scale = 1;
-void set_draw_scale(uint8_t scale) { g_scale = scale; }
+u8 g_scale = 1;
+void set_draw_scale(u8 scale) { g_scale = scale; }
 
 void graphics_init(void) {
   // Ensure the bootloader actually understands our base revision (see spec).
@@ -64,23 +64,23 @@ limine_framebuffer *get_framebuffer(void) {
   return framebuffer_request.response->framebuffers[0];
 }
 
-void put_pixel(size_t x, size_t y, uint32_t color) {
+void put_pixel(size_t x, size_t y, u32 color) {
   limine_framebuffer *framebuffer =
       framebuffer_request.response->framebuffers[0];
   size_t fb_width = framebuffer->width;
   size_t fb_height = framebuffer->height;
-  volatile uint32_t *fb_ptr = framebuffer->address;
+  volatile u32 *fb_ptr = framebuffer->address;
 
   if (x >= fb_width || y >= fb_height)
     return;
   fb_ptr[y * fb_width + x] = color;
 }
 
-void draw_char(char c, size_t px, size_t py, uint32_t color) {
+void draw_char(char c, size_t px, size_t py, u32 color) {
   draw_char_scaled(c, px, py, color, g_scale);
 }
 
-void fill_char(size_t px, size_t py, uint32_t color) {
+void fill_char(size_t px, size_t py, u32 color) {
   size_t scale = g_scale;
   for (size_t row = 0; row < 8; row++) {
     for (size_t col = 0; col < 8; col++) {
@@ -94,7 +94,7 @@ void fill_char(size_t px, size_t py, uint32_t color) {
   }
 }
 
-void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
+void draw_string(const char *str, size_t px, size_t py, u32 color) {
   while (*str) {
     if (px > (g_width - (7 * g_scale))) {
       px = 0;
@@ -111,24 +111,24 @@ void draw_string(const char *str, size_t px, size_t py, uint32_t color) {
   }
 }
 
-void draw_kstring(kstring *string, size_t px, size_t py, uint32_t color) {
+void draw_kstring(kstring *string, size_t px, size_t py, u32 color) {
   draw_string(string->buf, px, py, color);
 }
 
-void clear_screen(limine_framebuffer *fb_ptr, uint32_t color) {
-  uint32_t *buffer = (uint32_t *)fb_ptr->address;
+void clear_screen(limine_framebuffer *fb_ptr, u32 color) {
+  u32 *buffer = (u32 *)fb_ptr->address;
   size_t total_pixel = fb_ptr->height * fb_ptr->width;
   for (size_t i = 0; i < total_pixel; i++)
     buffer[i] = color;
 }
 
-void draw_char_scaled(char c, size_t px, size_t py, uint32_t color,
+void draw_char_scaled(char c, size_t px, size_t py, u32 color,
                       size_t scale) {
   if (c < 0)
     return;
 
   for (size_t row = 0; row < 8; row++) {
-    uint8_t bits = font8x8_basic[(size_t)c][row];
+    u8 bits = font8x8_basic[(size_t)c][row];
     for (size_t col = 0; col < 8; col++) {
       if (bits & (1 << col)) {
         // Draw a scale x scale block instead of a single pixel
@@ -142,16 +142,16 @@ void draw_char_scaled(char c, size_t px, size_t py, uint32_t color,
   }
 }
 
-uint32_t hsv_to_rgb_int(uint16_t h, uint8_t s, uint8_t v) {
+u32 hsv_to_rgb_int(u16 h, u8 s, u8 v) {
   // h: 0–359, s/v: 0–255
-  uint8_t region = h / 60; // sector 0–5
-  uint16_t remainder = (h % 60) * 255 / 60;
+  u8 region = h / 60; // sector 0–5
+  u16 remainder = (h % 60) * 255 / 60;
 
-  uint16_t p = (v * (255 - s)) / 255;
-  uint16_t q = (v * (255 - (s * remainder) / 255)) / 255;
-  uint16_t t = (v * (255 - (s * (255 - remainder)) / 255)) / 255;
+  u16 p = (v * (255 - s)) / 255;
+  u16 q = (v * (255 - (s * remainder) / 255)) / 255;
+  u16 t = (v * (255 - (s * (255 - remainder)) / 255)) / 255;
 
-  uint8_t r, g, b;
+  u8 r, g, b;
   switch (region) {
   case 0:
     r = v;
@@ -192,9 +192,9 @@ uint32_t hsv_to_rgb_int(uint16_t h, uint8_t s, uint8_t v) {
   return (r << 16) | (g << 8) | b;
 }
 
-static uint64_t hue = 0;
+static u64 hue = 0;
 void infinite_rainbow(limine_framebuffer *framebuffer) {
-  uint64_t colour;
+  u64 colour;
   // rainbowww
   for (;;) {
     colour = hsv_to_rgb_int(hue, 255, 255);
@@ -207,10 +207,10 @@ void infinite_rainbow(limine_framebuffer *framebuffer) {
 
 void debug_graphics(void) {
   limine_framebuffer *framebuffer = get_framebuffer();
-  uint32_t center = framebuffer->width / 2;
+  u32 center = framebuffer->width / 2;
   center -= 100;
 
-  uint8_t prev_scale = g_scale;
+  u8 prev_scale = g_scale;
   set_draw_scale(3);
   draw_string("Hello Mars, from LykOS", center, 0, BLUE);
   char height_buf[128];

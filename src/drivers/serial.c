@@ -45,6 +45,6 @@ void serial_write_fstring(const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-  write_fstring(SERIAL, format, args); 
+  write_fstring(SERIAL, format, args);
   va_end(args);
 }

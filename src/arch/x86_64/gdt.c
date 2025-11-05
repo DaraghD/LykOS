@@ -7,8 +7,7 @@ enum { GDT_COUNT = 3 };
 static GDTEntry gdt[GDT_COUNT];
 static GDTPtr gdt_ptr;
 
-static GDTEntry make_entry(uint32_t base, uint32_t limit, uint8_t access,
-                           uint8_t flags) {
+static GDTEntry make_entry(u32 base, u32 limit, u8 access, u8 flags) {
   // base and limit ignored in 64-bit;
   GDTEntry e;
   e.limit_low = limit & 0xFFFF;

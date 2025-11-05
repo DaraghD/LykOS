@@ -65,7 +65,7 @@ static char *itoa(int64_t value, char *str) {
   }
 
   // handle negatives
-  uint64_t sign = value < 0;
+  u64 sign = value < 0;
   if (sign)
     value = -value;
 
@@ -88,7 +88,7 @@ static char *itoa(int64_t value, char *str) {
 
   return str;
 }
-static char *uitoa(uint64_t value, char *str) {
+static char *uitoa(u64 value, char *str) {
   char *p = str;
   char *p1 = str;
   char tmp;
@@ -146,7 +146,7 @@ int strcmp(const char *s1, const char *s2) {
   return 0;
 }
 
-static char *intohex(uint64_t n, char *str, size_t width, bool trim_zero) {
+static char *intohex(u64 n, char *str, size_t width, bool trim_zero) {
   if (width > 16)
     width = 16; // max for 64-bit
 
@@ -193,7 +193,7 @@ void write_fstring(io_type io, const char *format, va_list args) {
 
   while (*format) {
     if (format[0] == '{' && strncmp(format, "{uint}", 6) == 0) {
-      uint64_t value = va_arg(args, uint64_t);
+      u64 value = va_arg(args, u64);
       char buf[65];
       uitoa(value, buf);
       write_string(buf);
@@ -232,7 +232,6 @@ void write_fstring(io_type io, const char *format, va_list args) {
       format += 5;
     } else if (format[0] == '{' && strncmp(format, "{kstr}", 6) == 0) {
       kstring *ks = va_arg(args, kstring *);
-      //? only works if memory is zerod?
       char *buf = kalloc(ks->len + 1);
       memcpy(buf, ks->buf, ks->len);
       buf[ks->len] = '\0';
@@ -240,9 +239,8 @@ void write_fstring(io_type io, const char *format, va_list args) {
       // for (int i = 0; i < ks->len; i++) {
       //   buf[i] = ks->buf[i];
       // }
-      buf[ks->len] = '\0';
       write_string(buf);
-      kfree((uint64_t)buf);
+      kfree(buf);
       format += 6;
     } else {
       write_char(*format);
@@ -257,4 +255,14 @@ int strlen(const char *s) {
     len++;
   }
   return len;
+}
+
+// inplace
+void to_upper(kstring *ks) {
+  for (int i = 0; i < ks->len; i++) {
+    char c = ks->buf[i];
+    if (c >= 'a' && c <= 'z')
+      c -= ('a' - 'A');
+    ks->buf[i] = c;
+  }
 }

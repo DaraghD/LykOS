@@ -1,7 +1,7 @@
 #include "terminal.h"
-#include "drivers/fs/fat16.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
+#include "fs/fat16.h"
 #include "graphics/draw.h"
 #include "klib/kstring.h"
 #include "mem/arena.h"
@@ -20,9 +20,9 @@ static char command_buf[256];
 static kstring command_content = KSTRING(command_buf, 256);
 
 // term cursor / drawing position
-uint64_t term_xpos = 0;
-uint64_t term_ypos = 0;
-uint32_t term_color;
+u64 term_xpos = 0;
+u64 term_ypos = 0;
+u32 term_color;
 
 static void draw_cursor_term(void);
 static void draw_kstring_term(kstring *kstr);
@@ -60,22 +60,25 @@ char scancode_to_ascii_caps[128] = {
 
 typedef struct {
   kstring entries[1000];
-  uint32_t count;
+  u32 count;
   arena arena;
   char *start;
 } cmd_history;
 
 cmd_history hist;
-static uint32_t hist_position = 0;
+static u32 hist_position = 0;
 
 void draw_logo(void) {
+  clear_screen(get_framebuffer(), BLACK);
   fat16_dir_entry_t targa_entry = *fat16_find_file("logo.tga");
   char *file_buf = kalloc(targa_entry.file_size);
   fat16_read_file(&targa_entry, file_buf);
+
   unsigned int *data;
   data = tga_parse((unsigned char *)file_buf, targa_entry.file_size);
-  uint64_t width = data[0];
-  uint64_t height = data[1];
+  u64 width = data[0];
+  u64 height = data[1];
+
   serial_write_fstring("W: {uint}, H: {uint}", width, height);
 
   size_t start_x = 0;
@@ -83,21 +86,21 @@ void draw_logo(void) {
   for (int py = 0; py < height; py++) {
     for (int px = 0; px < width; px++) {
       // Get pixel from TGA (skip first 2 elements which are width/height)
-      uint32_t pixel = data[2 + (py * width + px)];
-      // uint32_t a = (pixel >> 24) & 0xFF;
-      uint8_t b = (pixel >> 0) & 0xFF;
-      uint8_t g = (pixel >> 8) & 0xFF;
-      uint8_t r = (pixel >> 16) & 0xFF;
-      uint8_t a = (pixel >> 24) & 0xFF;
-      uint32_t rgba = (r << 24) | (g << 16) | (b << 8) | a;
+      u32 pixel = data[2 + (py * width + px)];
+      // u32 a = (pixel >> 24) & 0xFF;
+      u8 b = (pixel >> 0) & 0xFF;
+      u8 g = (pixel >> 8) & 0xFF;
+      u8 r = (pixel >> 16) & 0xFF;
+      u8 a = (pixel >> 24) & 0xFF;
+      u32 rgba = (r << 24) | (g << 16) | (b << 8) | a;
 
       size_t draw_y = start_y + (height - 1 - py);
       put_pixel(start_x + px, draw_y, rgba);
     }
   }
   term_ypos = height;
-  kfree((uint64_t)file_buf);
-  kfree((uint64_t)data);
+  kfree(file_buf);
+  kfree(data);
 }
 void draw_ascii(void) {
   term_color = 0xFFFFFFFF;
@@ -152,7 +155,7 @@ void terminal_newline(void) {
   memset(command_content.buf, 0, command_content.len);
   command_content.len = 0;
 
-  uint32_t temp_color = term_color;
+  u32 temp_color = term_color;
   term_color = RED;
   draw_string_term("StarShell>");
   term_color = temp_color;
@@ -160,7 +163,7 @@ void terminal_newline(void) {
 
 static void print_history(void) {
   terminal_fstring("\n");
-  for (uint32_t i = 0; i < hist.count; i++) {
+  for (u32 i = 0; i < hist.count; i++) {
     kstring *command = &hist.entries[i];
     terminal_fstring("{kstr}\n", command);
   }
@@ -175,19 +178,19 @@ bool is_alphanum(char c) {
 
 #define BACKSPACE '\b'
 #define ENTER '\n'
-void terminal_process_input(uint16_t sc) {
+void terminal_process_input(u16 sc) {
   // release keys
   if (sc & 0x80) {
     return;
   }
-  char c;
+  u64 c;
   if (shift)
     c = scancode_to_ascii_caps[sc];
   else
     c = scancode_to_ascii[sc];
 
   if (c == 'c' && ctrl) {
-    uint32_t temp_color = term_color;
+    u32 temp_color = term_color;
     term_color = 0xFFFFFFFF;
     draw_string_term("^C");
     term_color = temp_color;
@@ -218,13 +221,13 @@ void terminal_process_input(uint16_t sc) {
     serial_write_fstring("ARROW DOWN: hist_pos={uint}, count={uint}\n",
                          hist_position, hist.count);
 
-    uint32_t idx = hist.count - hist_position;
+    u32 idx = hist.count - hist_position;
     kstring *command = &hist.entries[idx];
 
     clear_current_command();
     fill_char(term_xpos, term_ypos, BLACK);
     memset(command_content.buf, 0, command_content.len);
-    for (uint16_t i = 0; i < command->len; i++) {
+    for (u16 i = 0; i < command->len; i++) {
       append_char(&command_content, command->buf[i]);
       draw_char_term(command->buf[i]);
     }
@@ -241,13 +244,13 @@ void terminal_process_input(uint16_t sc) {
     serial_write_fstring("ARROW UP: hist_pos={uint}, count={uint}\n",
                          hist_position, hist.count);
 
-    uint32_t idx = hist.count - hist_position;
+    u32 idx = hist.count - hist_position;
     kstring *command = &hist.entries[idx];
 
     clear_current_command();
     fill_char(term_xpos, term_ypos, BLACK);
     memset(command_content.buf, 0, command_content.len);
-    for (uint16_t i = 0; i < command->len; i++) {
+    for (u16 i = 0; i < command->len; i++) {
       append_char(&command_content, command->buf[i]);
       draw_char_term(command->buf[i]);
     }
@@ -277,9 +280,9 @@ void terminal_process_input(uint16_t sc) {
       }
     }
     return;
-  } else if (c == LEFT_ARROW) {
+  } else if (sc == LEFT_ARROW) {
     return;
-  } else if (c == RIGHT_ARROW) {
+  } else if (sc == RIGHT_ARROW) {
     return;
   }
 
@@ -330,7 +333,7 @@ void draw_char_term(char c) {
 }
 
 static void draw_cursor_term(void) {
-  // uint32_t old_color = term_color;
+  // u32 old_color = term_color;
   // term_color = WHITE;
   // draw_char_term('_');
   // term_color = old_color;

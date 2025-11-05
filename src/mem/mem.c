@@ -23,16 +23,16 @@ __attribute__((
     section(".limine_requests"))) static volatile struct limine_hhdm_request
     limine_hhdm_request = {.id = LIMINE_HHDM_REQUEST, .revision = 0};
 
-static uint64_t total_usable = 0;
-static uint64_t reclaimable = 0;
-static uint64_t bad = 0;
-static uint64_t reserved = 0;
-static uint64_t framebuf = 0;
-static uint64_t nvs = 0;
-static uint64_t exe = 0;
-static uint64_t highest_addr = 0;
+static u64 total_usable = 0;
+static u64 reclaimable = 0;
+static u64 bad = 0;
+static u64 reserved = 0;
+static u64 framebuf = 0;
+static u64 nvs = 0;
+static u64 exe = 0;
+static u64 highest_addr = 0;
 
-uint64_t hhdm_offset;
+u64 hhdm_offset;
 
 void memmap_init(void) {
   struct limine_memmap_response *response = limine_memmap_request.response;
@@ -44,7 +44,7 @@ void memmap_init(void) {
   hhdm_offset = limine_hhdm_request.response->offset;
   serial_write_fstring("Memory map entries: {int}\n", response->entry_count);
 
-  for (uint64_t i = 0; i < response->entry_count; i++) {
+  for (u64 i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
     if (entry->base > highest_addr)
       highest_addr = entry->base;
@@ -90,28 +90,28 @@ void memmap_init(void) {
 }
 
 // bitmap will have 1 frame per bit
-static uint8_t frame_bitmap[MAX_FRAMES / 8];
+static u8 frame_bitmap[MAX_FRAMES / 8];
 
-static inline void set_bit(uint64_t frame) {
+static inline void set_bit(u64 frame) {
   frame_bitmap[frame / 8] |= (1 << (frame % 8));
 }
 
-static inline void clear_bit(uint64_t frame) {
+static inline void clear_bit(u64 frame) {
   frame_bitmap[frame / 8] &= ~(1 << (frame % 8));
 }
 
-static inline int test_bit(uint64_t frame) {
+static inline int test_bit(u64 frame) {
   return frame_bitmap[frame / 8] & (1 << (frame % 8));
 }
 
-void mark_frames_free(uint64_t start, uint64_t count) {
-  for (uint64_t i = 0; i < count; i++) {
+void mark_frames_free(u64 start, u64 count) {
+  for (u64 i = 0; i < count; i++) {
     clear_bit(start + i); // 0 = free
   }
 }
 
-void mark_frames_used(uint64_t start, uint64_t count) {
-  for (uint64_t i = 0; i < count; i++) {
+void mark_frames_used(u64 start, u64 count) {
+  for (u64 i = 0; i < count; i++) {
     set_bit(start + i); // 1 = used
   }
 }
@@ -119,12 +119,12 @@ void mark_frames_used(uint64_t start, uint64_t count) {
 void pmm_init(void) {
   memset(frame_bitmap, 0xFF, sizeof(frame_bitmap));
   struct limine_memmap_response *response = limine_memmap_request.response;
-  for (uint64_t i = 0; i < response->entry_count; i++) {
+  for (u64 i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
     if (entry->type == LIMINE_MEMMAP_USABLE) {
       serial_write_fstring("Entry is usable at base {uint} \n", entry->base);
-      uint64_t start = entry->base / FRAME_SIZE;
-      uint64_t count = entry->length / FRAME_SIZE;
+      u64 start = entry->base / FRAME_SIZE;
+      u64 count = entry->length / FRAME_SIZE;
       serial_write_fstring("Marking {uint} frames free at {uint}\n", count,
                            start);
       mark_frames_free(start, count);
@@ -146,9 +146,9 @@ int64_t find_first_free_frame(void) {
 }
 
 // can null
-void *alloc_frames(uint64_t frame_amount) {
-  uint64_t avail_contigous_frames = 0;
-  uint64_t start_idx = 0;
+void *alloc_frames(u64 frame_amount) {
+  u64 avail_contigous_frames = 0;
+  u64 start_idx = 0;
   for (int64_t i = 1; i < MAX_FRAMES / 8; i++) { // avoid first frame
     // TODO:possible optimisation here using amount sizes
     if (frame_bitmap[i] != 0xFF) { // has to have one non zero bit
@@ -196,7 +196,7 @@ void pmm_free_frame(void) { return; }
 // debug
 //
 void print_memory_stats(void) {
-  uint64_t free_frames = 0;
+  u64 free_frames = 0;
   for (int64_t i = 1; i < MAX_FRAMES / 8; i++) { // avoid first frame
     if (frame_bitmap[i] != 0xFF) {
       for (int b = 0; b < 8; b++) {
@@ -206,7 +206,7 @@ void print_memory_stats(void) {
       }
     }
   }
-  uint64_t free_frames_MB = TO_MB(free_frames * FRAME_SIZE);
+  u64 free_frames_MB = TO_MB(free_frames * FRAME_SIZE);
   terminal_fstring("Free memory (MB): {uint}\n", free_frames_MB);
   terminal_fstring("Free pages: {uint}\n", free_frames);
   print_allocation_stats();

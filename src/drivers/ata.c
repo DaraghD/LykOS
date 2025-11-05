@@ -11,21 +11,21 @@ static inline void ata_wait_ready(void) {
 }
 
 // reads 512 bytes into buffer
-void ata_read_sector(uint32_t lba, uint8_t *buffer) {
+void ata_read_sector(u32 lba, u8 *buffer) {
   outb(ATA_DRIVE_SELECT_PORT, ATA_DRIVE_MASTER | ((lba >> 24) & 0x0F));
 
   outb(ATA_SECTOR_COUNT_PORT, 1);
-  outb(ATA_LBA_LOW_PORT, (uint8_t)(lba & 0xFF));
-  outb(ATA_LBA_MID_PORT, (uint8_t)((lba >> 8) & 0xFF));
-  outb(ATA_LBA_HIGH_PORT, (uint8_t)((lba >> 16) & 0xFF));
+  outb(ATA_LBA_LOW_PORT, (u8)(lba & 0xFF));
+  outb(ATA_LBA_MID_PORT, (u8)((lba >> 8) & 0xFF));
+  outb(ATA_LBA_HIGH_PORT, (u8)((lba >> 16) & 0xFF));
 
   outb(ATA_COMMAND_PORT, ATA_CMD_READ_SECTORS);
 
   ata_wait_ready();
 
-  uint8_t status = inb(ATA_STATUS_PORT);
+  u8 status = inb(ATA_STATUS_PORT);
   if (ATA_HAS_ERROR(status)) {
-    uint8_t error = inb(ATA_ERROR_PORT);
+    u8 error = inb(ATA_ERROR_PORT);
     if (error & 0x01)
       serial_writeln("ATA error: Address Mark Not Found");
     else if (error & 0x02)
@@ -42,26 +42,26 @@ void ata_read_sector(uint32_t lba, uint8_t *buffer) {
       serial_writeln("ATA error: Bad Block");
   }
 
-  uint16_t *buf16 = (uint16_t *)buffer;
+  u16 *buf16 = (u16 *)buffer;
   for (int i = 0; i < 256; i++) {
     buf16[i] = inw(ATA_DATA_PORT);
   }
 }
 
 // write 512 bytes to buffer
-void ata_write_sector(uint32_t lba, uint8_t *buffer) {
+void ata_write_sector(u32 lba, u8 *buffer) {
   outb(ATA_DRIVE_SELECT_PORT, ATA_DRIVE_MASTER | ((lba >> 24) & 0x0F));
 
   outb(ATA_SECTOR_COUNT_PORT, 1);
-  outb(ATA_LBA_LOW_PORT, (uint8_t)(lba & 0xFF));
-  outb(ATA_LBA_MID_PORT, (uint8_t)((lba >> 8) & 0xFF));
-  outb(ATA_LBA_HIGH_PORT, (uint8_t)((lba >> 16) & 0xFF));
+  outb(ATA_LBA_LOW_PORT, (u8)(lba & 0xFF));
+  outb(ATA_LBA_MID_PORT, (u8)((lba >> 8) & 0xFF));
+  outb(ATA_LBA_HIGH_PORT, (u8)((lba >> 16) & 0xFF));
 
   outb(ATA_COMMAND_PORT, ATA_CMD_WRITE_SECTORS);
 
   ata_wait_ready();
 
-  uint16_t *buf16 = (uint16_t *)buffer;
+  u16 *buf16 = (u16 *)buffer;
   for (int i = 0; i < 256; i++) {
     outw(ATA_DATA_PORT, buf16[i]);
   }
@@ -73,5 +73,5 @@ void ata_write_sector(uint32_t lba, uint8_t *buffer) {
 }
 
 // buffer must be big enough for count * sector size
-void ata_read_sectors(uint32_t lba, uint32_t count, uint16_t *buffer) {}
-void ata_write_sectors(uint32_t lba, uint32_t count, uint16_t *buffer) {}
+void ata_read_sectors(u32 lba, u32 count, u16 *buffer) {}
+void ata_write_sectors(u32 lba, u32 count, u16 *buffer) {}
