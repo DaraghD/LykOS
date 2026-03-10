@@ -1,6 +1,7 @@
 #pragma once
 
 #include "req.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 #define PT_LOAD 1
@@ -41,4 +42,10 @@ typedef struct {
   u64 p_align;  // Alignment
 } __attribute__((packed)) Elf64_Phdr;
 
-void exec_elf(void *file);
+typedef struct {
+  u64 entry_addr;
+  void *segments[8];
+  u64 segment_count;
+} loaded_elf;
+
+bool load_elf(void *file, loaded_elf* out);
