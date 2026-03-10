@@ -1,6 +1,7 @@
 #include "ps2.h"
 #include "arch/x86_64/io.h"
 #include "drivers/serial.h"
+#include "proc/task.h"
 #include "terminal.h"
 #include <graphics/draw.h>
 #include <stdbool.h>
@@ -36,60 +37,70 @@ __attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame) {
 #define EXTENDED 0xE0
 
 void keyboard_process(void) {
+  serial_write_fstring("[KEYBOARD] Echo...\n");
+
   static bool extended = false;
-  while (keyboard_tail != keyboard_head) {
-    u64 sc = keyboard_buffer[keyboard_tail];
-    serial_write_fstring("scancode={uint}\n", sc);
-    keyboard_tail = (keyboard_tail + 1) % KEYBOARD_BUFFER_SIZE;
+  while (1) {
+    serial_write_fstring("[TASK] Keyboard\n");
+    // test that kernel can take away cpu after time slice expires
+    //  for (u64 i = 0; i < 999999999; i++)
+    //  serial_write_fstring("{uint}\n", i);
 
-    if (sc == EXTENDED) {
-      extended = true;
-      continue;
-    }
+    while (keyboard_tail != keyboard_head) {
+      u64 sc = keyboard_buffer[keyboard_tail];
+      serial_write_fstring("scancode={uint}\n", sc);
+      keyboard_tail = (keyboard_tail + 1) % KEYBOARD_BUFFER_SIZE;
 
-    bool is_release = sc & 0x80;
-    sc &= 0x7F; // remove release bit
+      if (sc == EXTENDED) {
+        extended = true;
+        continue;
+      }
 
-    switch (sc) {
-    case 0x2A:
-      shift = !is_release;
-      continue; // left shift
-    case 0x36:
-      shift = !is_release;
-      continue; // right shift
-    case 0x1D:
-      ctrl = !is_release;
-      continue; // ctrl
-    }
+      bool is_release = sc & 0x80;
+      sc &= 0x7F; // remove release bit
 
-    if (extended) {
-      extended = false;
+      switch (sc) {
+      case 0x2A:
+        shift = !is_release;
+        continue; // left shift
+      case 0x36:
+        shift = !is_release;
+        continue; // right shift
+      case 0x1D:
+        ctrl = !is_release;
+        continue; // ctrl
+      }
+
+      if (extended) {
+        extended = false;
+
+        if (is_release)
+          continue;
+
+        switch (sc) {
+        case 0x48:
+          terminal_process_input(UP_ARROW);
+          break;
+        case 0x50:
+          terminal_process_input(DOWN_ARROW);
+          break;
+        case 0x4B:
+          terminal_process_input(LEFT_ARROW);
+          break;
+        case 0x4D:
+          terminal_process_input(RIGHT_ARROW);
+          break;
+        default:
+          break;
+        }
+        continue;
+      }
 
       if (is_release)
         continue;
 
-      switch (sc) {
-      case 0x48:
-        terminal_process_input(UP_ARROW);
-        break;
-      case 0x50:
-        terminal_process_input(DOWN_ARROW);
-        break;
-      case 0x4B:
-        terminal_process_input(LEFT_ARROW);
-        break;
-      case 0x4D:
-        terminal_process_input(RIGHT_ARROW);
-        break;
-      default:
-        break;
-      }
-      continue;
+      terminal_process_input(sc);
     }
-
-    if (is_release)
-      continue;
-
-    terminal_process_input(sc);
+    preempt_check();
   }
 }
