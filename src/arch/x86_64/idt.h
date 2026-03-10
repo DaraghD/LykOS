@@ -31,8 +31,7 @@ void idt_remap_init(void);
 
 // ISRs
 // Using GCC interrupt attribute
-__attribute__((interrupt))
-void isr_divide_error(interrupt_frame *frame);
-__attribute__((interrupt))
-void test_isr(interrupt_frame *frame);
+__attribute__((interrupt)) void isr_divide_error(interrupt_frame *frame);
+__attribute__((interrupt)) void test_isr(interrupt_frame *frame);
 __attribute__((interrupt)) void isr_keyboard(interrupt_frame *frame);
+__attribute__((interrupt)) void isr_pit_timer(interrupt_frame *frame);

@@ -1,12 +1,15 @@
 #include "arch/x86_64/gdt.h"
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/pic.h"
+#include "drivers/pit.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "fs/fat16.h"
 #include "fs/vfs.h"
 #include "graphics/draw.h"
+#include "klib/widget.h"
 #include "mem/mem.h"
+#include "proc/task.h"
 #include "terminal.h"
 #include "vendor/stb_ds.h"
 #include <stdint.h>
@@ -21,6 +24,7 @@ void kmain(void) {
   gdt_init();
   idt_init();
   pic_remap();
+  pit_init(100);
   memmap_init();
   pmm_init();
   graphics_init();
@@ -54,13 +58,21 @@ void kmain(void) {
   kstring *parts = vfs_split_path(&path);
   for (int i = 0; i < arrlen(parts); i++) {
     serial_write_fstring("{str}\n", parts[i].buf);
-    terminal_fstring("{str}\n", parts[i].buf);
+    // terminal_fstring("{str}\n", parts[i].buf);
   }
 
-  u32 i = 0;
+  tasking_init();
+  task_create("keyboard", &keyboard_process);
+  task_create("uptime-clock", &draw_clock);
+  task_create("spinner", &pit_spinner_tick);
+
   while (1) {
-    keyboard_process();
+    if (need_resched) {
+      serial_write_fstring("Checking if need resched");
+      need_resched = 0;
+      yield();
+    }
+    // yield();
   }
-
   hcf();
 }

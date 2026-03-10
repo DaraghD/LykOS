@@ -1,11 +1,13 @@
 #include "shell.h"
 #include "arch/x86_64/util.h"
+#include "drivers/pit.h"
 #include "drivers/serial.h"
 #include "fs/vfs.h"
 #include "graphics/draw.h"
 #include "klib/kstring.h"
 #include "mem/kalloc.h"
 #include "mem/mem.h"
+#include "proc/task.h"
 #include "req.h"
 #include "user/elf.h"
 // #define STB_DS_IMPLEMENTATION
@@ -137,6 +139,14 @@ void shell_execute(kstring *line) {
     kstring path = args.args[0];
     cat_file(&path);
 
+  }
+
+  else if (kstrncmp(line, "cat", 3)) {
+    if (!parse_args(line, &args)) {
+      terminal_fstring("File needed to cat\n");
+      goto skip_history;
+    }
+
   } else if (kstrncmp(line, "exec", 4)) {
     if (!parse_args(line, &args)) {
       terminal_fstring("File needed to exec\n");
@@ -153,8 +163,18 @@ void shell_execute(kstring *line) {
       terminal_fstring("Can't find file\n");
       goto skip_history;
     }
-    exec_elf(file);
-    kfree(file);
+
+    // storing this inside arena/pool or something with a task would help kepe
+    // track for freeing it, can't create the name on the stack since it will be
+    // invalid as task lives longer than this stack frame, for now its just
+    // leaked
+    char *name_buf = kalloc(path.len + 1);
+    memcpy(name_buf, path.buf, path.len);
+    name_buf[path.len] = '\0';
+
+    int ret = task_create_elf(name_buf, file);
+    if (ret < 0)
+      terminal_fstring("Could not exec file\n");
   }
 
   else if (kstrncmp(line, "ascii", 5))
@@ -204,6 +224,12 @@ void shell_execute(kstring *line) {
 
   else if (kstrncmp(line, "freelist", 8))
     debug_freelist();
+
+  else if (kstrncmp(line, "uptime", 6))
+    draw_uptime();
+
+  else if (kstrncmp(line, "tasks", 5))
+    debug_tasks();
 
   else {
     terminal_fstring("Unknown command\n");

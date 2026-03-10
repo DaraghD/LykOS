@@ -40,6 +40,7 @@ void pic_remap(void) {
   outb(PIC2_DATA, a2);
   iowait();
 
-  outb(0x21, 0xFD); // only IRQ1 is unmasked
+  // outb(0x21, 0xFD); // only IRQ1 is unmasked
+  outb(0x21, 0xFC); // unmask IRQ0 and IRQ1 (11111100b)
   outb(0xA1, 0xFF); // all slave IRQs masked
 }
