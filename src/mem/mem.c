@@ -57,32 +57,40 @@ void memmap_init(void) {
         "Region {uint}: base={uint} length={uint} usable={str}\n", i,
         entry->base, entry->length, is_usable);
 
-    // draw_fstring("Region {uint}: base={uint} length={uint} type={uint}\n", i,
-    // entry->base, TO_MB(entry->length), entry->type);
+    terminal_fstring("Region {uint}: base={uint} size={uint} type=", i,
+                     entry->base, entry->length, entry->type);
 
     switch (entry->type) {
     case (LIMINE_MEMMAP_USABLE):
+      terminal_fstring("USABLE\n");
       total_usable += entry->length;
       break;
     case (LIMINE_MEMMAP_RESERVED):
+      terminal_fstring("RESERVED\n");
       reserved += entry->length;
       break;
     case (LIMINE_MEMMAP_BAD_MEMORY):
+      terminal_fstring("BAD MEMORY\n");
       bad += entry->length;
       break;
     case (LIMINE_MEMMAP_FRAMEBUFFER):
+      terminal_fstring("FRAMEBUFFER\n");
       framebuf += entry->length;
       break;
     case (LIMINE_MEMMAP_ACPI_NVS):
+      terminal_fstring("ACPI_NVS\n");
       nvs += entry->length;
       break;
     case (LIMINE_MEMMAP_EXECUTABLE_AND_MODULES):
+      terminal_fstring("EXECUTABLE MODULES\n");
       exe += entry->length;
       break;
     case (LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE):
+      terminal_fstring("BOOTLOADER RECLAIMABLE\n");
       reclaimable += entry->length;
       break;
     case (LIMINE_MEMMAP_ACPI_RECLAIMABLE):
+      terminal_fstring("ACPI RECLAIMABLE\n");
       reclaimable += entry->length;
       break;
     }
@@ -228,6 +236,7 @@ void print_paging(void) {
 }
 
 void print_memmap(void) {
+  memmap_init();
   terminal_fstring("\n Total usable~      (MB):{uint}\n", TO_MB(total_usable));
   terminal_fstring("\n Total reclaimable~ (KB):{uint}\n", TO_KB(reclaimable));
   terminal_fstring("\n Total bad~         (KB):{uint}\n", TO_KB(bad));

@@ -87,15 +87,15 @@ void *read_file(kstring *path, u64 *out_size) {
 }
 
 // free ks.buf
-static inline kstring make_kstring(const char *src, size_t len) {
-  kstring ks;
-  ks.buf = kalloc(len + 1);
-  ks.len = len;
-  ks.cap = len + 1;
-  memcpy(ks.buf, src, len);
-  ks.buf[len] = '\0';
-  return ks;
-}
+// static inline kstring make_kstring(const char *src, size_t len) {
+//   kstring ks;
+//   ks.buf = kalloc(len + 1);
+//   ks.len = len;
+//   ks.cap = len + 1;
+//   memcpy(ks.buf, src, len);
+//   ks.buf[len] = '\0';
+//   return ks;
+// }
 
 kstring *vfs_split_path(const kstring *path) {
   kstring *parts = NULL;

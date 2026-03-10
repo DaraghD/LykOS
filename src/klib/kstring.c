@@ -52,7 +52,7 @@ bool kstrncmp(kstring *ks, const char *cmp, int len) {
   }
   return true;
 }
-static char *itoa(int64_t value, char *str) {
+char *itoa(int64_t value, char *str) {
   char *p = str;
   char *p1 = str;
   char tmp;
@@ -178,8 +178,8 @@ typedef void (*write_string_fptr)(const char *str);
 typedef void (*write_char_fptr)(char c);
 
 void write_fstring(io_type io, const char *format, va_list args) {
-  write_string_fptr write_string = &serial_write;
-  write_char_fptr write_char = &serial_write_char;
+  write_string_fptr write_string;
+  write_char_fptr write_char;
   switch (io) {
   case TERMINAL:
     write_string = &draw_string_term;
@@ -265,4 +265,14 @@ void to_upper(kstring *ks) {
       c -= ('a' - 'A');
     ks->buf[i] = c;
   }
+}
+
+kstring make_kstring(const char *src, size_t len) {
+  kstring ks;
+  ks.buf = kalloc(len + 1);
+  ks.len = len;
+  ks.cap = len + 1;
+  memcpy(ks.buf, src, len);
+  ks.buf[len] = '\0';
+  return ks;
 }

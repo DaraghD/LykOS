@@ -1,4 +1,5 @@
 #pragma once
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -34,3 +35,5 @@ int strcmp(const char *s1, const char *s2);
 int strlen(const char *s);
 void write_fstring(io_type io, const char *format, va_list args); 
 void to_upper(kstring* ks);
+char *itoa(int64_t value, char*str);
+kstring make_kstring(const char *src, size_t len);

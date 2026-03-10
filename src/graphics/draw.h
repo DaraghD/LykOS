@@ -7,9 +7,9 @@
 #include <sys/types.h>
 
 #define GREEN 0x00FF00
-#define BLUE 0x0000FF
+#define BLUE  0x0000FF
 #define BLACK 0x000000
-#define RED 0xFF0000
+#define RED   0xFF0000
 #define WHITE 0xFFFFFF
 
 typedef struct limine_framebuffer limine_framebuffer;
@@ -17,6 +17,7 @@ typedef struct limine_framebuffer limine_framebuffer;
 extern u8 g_scale;
 extern u32 g_width;
 extern u32 g_height;
+extern bool is_graphics_init;
 
 limine_framebuffer *get_framebuffer(void);
 void graphics_init(void);

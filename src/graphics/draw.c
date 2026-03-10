@@ -1,5 +1,4 @@
 #include "draw.h"
-#include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "vendor/font.h"
 #include "vendor/limine.h"
@@ -42,6 +41,7 @@ u32 g_height;
 
 u8 g_scale = 1;
 void set_draw_scale(u8 scale) { g_scale = scale; }
+bool is_graphics_init = false;
 
 void graphics_init(void) {
   // Ensure the bootloader actually understands our base revision (see spec).
@@ -58,6 +58,7 @@ void graphics_init(void) {
   }
   g_width = get_framebuffer()->width;
   g_height = get_framebuffer()->height;
+  is_graphics_init = true;
 }
 
 limine_framebuffer *get_framebuffer(void) {
@@ -67,6 +68,7 @@ limine_framebuffer *get_framebuffer(void) {
 void put_pixel(size_t x, size_t y, u32 color) {
   limine_framebuffer *framebuffer =
       framebuffer_request.response->framebuffers[0];
+
   size_t fb_width = framebuffer->width;
   size_t fb_height = framebuffer->height;
   volatile u32 *fb_ptr = framebuffer->address;
@@ -122,8 +124,7 @@ void clear_screen(limine_framebuffer *fb_ptr, u32 color) {
     buffer[i] = color;
 }
 
-void draw_char_scaled(char c, size_t px, size_t py, u32 color,
-                      size_t scale) {
+void draw_char_scaled(char c, size_t px, size_t py, u32 color, size_t scale) {
   if (c < 0)
     return;
 
