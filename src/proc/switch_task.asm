@@ -27,6 +27,15 @@ section .text
 
 		mov rax, [rsp] ; Save RIP
 		mov [rdi + 136], rax
+
+		; Save old CR3
+    	mov rax, cr3
+    	mov [rdi + 144], rax
+
+    	; Load new CR3 for addr space
+    	mov rax, [rsi + 144]
+    	mov cr3, rax
+
 		push rax
 
 		mov rax, [rsi] ; Load the state of the next task

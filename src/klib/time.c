@@ -16,11 +16,11 @@ u64 ticks_to_hours(u64 ticks) { return ticks_total_seconds(ticks) / 3600; }
 
 // hh:mm:ss
 void ticks_to_time(u64 ticks, char out[9]) {
-  serial_write_fstring("START TICK {uint}\n", ticks);
-  serial_write_fstring("CURRENT TICK {uint}\n", pit_get_ticks());
+  serial_fstring("START TICK {uint}\n", ticks);
+  serial_fstring("CURRENT TICK {uint}\n", pit_get_ticks());
 
   u64 uptime = pit_get_ticks() - ticks;
-  serial_write_fstring("UPTIME {uint}\n", uptime);
+  serial_fstring("UPTIME {uint}\n", uptime);
 
   out[0] = '0' + (ticks_to_hours(uptime) / 10);
   out[1] = '0' + (ticks_to_hours(uptime) % 10);
@@ -41,7 +41,3 @@ u64 get_hours(void) { return get_minutes() / 60; }
 
 u64 clock_seconds(void) { return get_seconds() % 60; }
 u64 clock_minutes(void) { return get_minutes() % 60; }
-void draw_uptime(void) {
-  terminal_fstring("Uptime: {uint}:{uint}:{uint}\n", get_hours(),
-                   clock_minutes(), clock_seconds());
-}

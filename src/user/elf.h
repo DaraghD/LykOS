@@ -48,4 +48,4 @@ typedef struct {
   u64 segment_count;
 } loaded_elf;
 
-bool load_elf(void *file, loaded_elf* out);
+bool load_elf(void *file, loaded_elf *out, u64 *pml4);

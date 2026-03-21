@@ -20,8 +20,8 @@ static char command_buf[256];
 static kstring command_content = KSTRING(command_buf, 256);
 
 // term cursor / drawing position
-u64 term_xpos = 0;
-u64 term_ypos = 0;
+volatile u64 term_xpos = 0;
+volatile u64 term_ypos = 0;
 u32 term_color;
 
 static void draw_cursor_term(void);
@@ -79,7 +79,7 @@ void draw_logo(void) {
   u64 width = data[0];
   u64 height = data[1];
 
-  serial_write_fstring("W: {uint}, H: {uint}", width, height);
+  serial_fstring("W: {uint}, H: {uint}", width, height);
 
   size_t start_x = 0;
   size_t start_y = 0;
@@ -119,11 +119,15 @@ void terminal_init(void) {
   draw_logo();
   // terminal_newline();
 
-  draw_string_term("\nWelcome to LykOS\n\n");
+  draw_string_term("\nWelcome to ");
+  term_color = MARS_RED;
+  terminal_fstring("LykOS\n\n");
+  term_color = CYAN;
+  draw_string_term("Type help to see a list of commands\n");
   term_color = RED;
   draw_string_term("StarShell>");
 
-  term_color = GREEN;
+  term_color = TEAL;
   draw_cursor_term();
 
   hist.arena = arena_init(8000);
@@ -218,8 +222,8 @@ void terminal_process_input(u16 sc) {
 
     hist_position--;
 
-    serial_write_fstring("ARROW DOWN: hist_pos={uint}, count={uint}\n",
-                         hist_position, hist.count);
+    serial_fstring("ARROW DOWN: hist_pos={uint}, count={uint}\n", hist_position,
+                   hist.count);
 
     u32 idx = hist.count - hist_position;
     kstring *command = &hist.entries[idx];
@@ -241,8 +245,8 @@ void terminal_process_input(u16 sc) {
 
     hist_position++;
 
-    serial_write_fstring("ARROW UP: hist_pos={uint}, count={uint}\n",
-                         hist_position, hist.count);
+    serial_fstring("ARROW UP: hist_pos={uint}, count={uint}\n", hist_position,
+                   hist.count);
 
     u32 idx = hist.count - hist_position;
     kstring *command = &hist.entries[idx];
@@ -289,11 +293,11 @@ void terminal_process_input(u16 sc) {
   if (!is_alphanum(c))
     return;
 
-  serial_write_fstring("Writing char: {char} \n", c);
+  serial_fstring("Writing char: {char} \n", c);
   append_char(&command_content, c);
   fill_char(term_xpos, term_ypos, BLACK);
   draw_char_term(c);
-  serial_write_fstring("Command buffer size : {int}\n", command_content.len);
+  serial_fstring("Command buffer size : {int}\n", command_content.len);
   draw_cursor_term();
   hist_position = 0;
 }
@@ -310,7 +314,7 @@ void terminal_fstring(const char *format, ...) {
 
 void terminal_clearscreen(void) {
   clear_screen(get_framebuffer(), BLACK);
-  term_ypos = 0;
+  term_ypos = 8 * g_scale;
 }
 
 void draw_char_term(char c) {

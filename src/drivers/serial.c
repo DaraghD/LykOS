@@ -41,7 +41,7 @@ void serial_writeln(const char *s) {
   serial_write("\r\n");
 }
 
-void serial_write_fstring(const char *format, ...) {
+void serial_fstring(const char *format, ...) {
   va_list args;
   va_start(args, format);
 

@@ -5,8 +5,8 @@
 
 extern char scancode_to_ascii[128];
 extern u32 term_color;
-extern u64 term_xpos;
-extern u64 term_ypos;
+extern volatile u64 term_xpos;
+extern volatile u64 term_ypos;
 
 void terminal_init(void);
 void terminal_process_input(u16 sc);

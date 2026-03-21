@@ -27,4 +27,4 @@ extern volatile u8 keyboard_head;
 extern volatile u8 keyboard_tail;
 
 void keyboard_process(void);
-__attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame);
+void isr_ps2_keyboard(interrupt_frame *frame);

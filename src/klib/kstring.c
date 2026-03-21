@@ -217,7 +217,7 @@ void write_fstring(io_type io, const char *format, va_list args) {
       write_string(buf);
       format += 5;
     } else if (format[0] == '{' && strncmp(format, "{hex}", 5) == 0) {
-      int value = va_arg(args, int);
+      u64 value = va_arg(args, u64);
       char buf[17];
       intohex(value, buf, 16, true);
       write_string(buf);

@@ -18,7 +18,7 @@ void fat16_init(void) {
   memcpy(&bpb, sector, sizeof(fat16_bpb_t));
 
   u32 fat_size_bytes = bpb.fat_size_sectors * bpb.bytes_per_sector;
-  serial_write_fstring("Allocating {uint} bytes for fat", fat_size_bytes);
+  serial_fstring("Allocating {uint} bytes for fat", fat_size_bytes);
   fat_table = kalloc(fat_size_bytes);
 
   // read fat1 into fat_table
@@ -39,13 +39,13 @@ void fat16_init(void) {
       memcpy(&root_dir[entry_index], sector + j * 32, 32);
     }
   }
-  serial_write_fstring("Reserved: {uint}\n", bpb.reserved_sectors);
-  serial_write_fstring("FAT count: {uint}\n", bpb.fat_count);
-  serial_write_fstring("FAT size: {uint}\n", bpb.fat_size_sectors);
-  serial_write_fstring("Root entries: {uint}\n", bpb.root_entries);
-  serial_write_fstring("Total sectors: {uint}\n", bpb.total_sectors_short);
-  serial_write_fstring("Bytes per sector: {uint}\n", bpb.bytes_per_sector);
-  serial_write_fstring("Sectors per cluster: {uint}\n",
+  serial_fstring("Reserved: {uint}\n", bpb.reserved_sectors);
+  serial_fstring("FAT count: {uint}\n", bpb.fat_count);
+  serial_fstring("FAT size: {uint}\n", bpb.fat_size_sectors);
+  serial_fstring("Root entries: {uint}\n", bpb.root_entries);
+  serial_fstring("Total sectors: {uint}\n", bpb.total_sectors_short);
+  serial_fstring("Bytes per sector: {uint}\n", bpb.bytes_per_sector);
+  serial_fstring("Sectors per cluster: {uint}\n",
                        bpb.sectors_per_cluster);
 }
 
@@ -61,11 +61,11 @@ u32 fat16_cluster_to_lba(u16 cluster) {
 // TODO: should buffer be char or u8?
 void fat16_read_file(fat16_dir_entry_t *entry, u8 *buffer) {
 
-  serial_write_fstring("About to read file:\n");
-  serial_write_fstring("  First cluster: {uint}\n", entry->first_cluster);
-  serial_write_fstring("  File size: {uint}\n", entry->file_size);
-  serial_write_fstring("  Name: {str}\n", entry->name);
-  serial_write_fstring("  Calculated LBA: {uint}\n",
+  serial_fstring("About to read file:\n");
+  serial_fstring("  First cluster: {uint}\n", entry->first_cluster);
+  serial_fstring("  File size: {uint}\n", entry->file_size);
+  serial_fstring("  Name: {str}\n", entry->name);
+  serial_fstring("  Calculated LBA: {uint}\n",
                        fat16_cluster_to_lba(entry->first_cluster));
 
   u16 cluster = entry->first_cluster;
@@ -78,7 +78,7 @@ void fat16_read_file(fat16_dir_entry_t *entry, u8 *buffer) {
     // read ALL sectors in this cluster
     for (u32 i = 0; i < bpb.sectors_per_cluster && bytes_left > 0; i++) {
       ata_read_sector(lba + i, sector_buffer);
-      // serial_write_fstring(
+      // serial_fstring(
       // "Read LBA {uint}, first bytes: {uint} {uint} {uint} {uint}\n",
       // lba + i, sector_buffer[0], sector_buffer[1], sector_buffer[2],
       // sector_buffer[3]);
@@ -143,9 +143,9 @@ void fat16_format83_name(const char *name, char formatted[11]) {
 
 u32 fat16_get_entries(fat16_dir_entry_t *files) {
   u16 count = 0;
-  serial_write_fstring("bpb entries root{uint}\n", bpb.root_entries);
+  serial_fstring("bpb entries root{uint}\n", bpb.root_entries);
   for (int j = 0; j < 512; j += 1) {
-    serial_write_fstring("Reading root dir at {uint}", j);
+    serial_fstring("Reading root dir at {uint}", j);
     fat16_dir_entry_t *entry = &root_dir[j];
     if (entry->name[0] == '\0')
       break; // end of entries
@@ -166,7 +166,7 @@ u32 fat16_get_entries(fat16_dir_entry_t *files) {
     for (int k = 2; k >= 0 && ext[k] == ' '; k--)
       ext[k] = '\0';
 
-    serial_write_fstring("{str}.{str}\n", name, ext);
+    serial_fstring("{str}.{str}\n", name, ext);
   }
   return count;
 }
@@ -176,16 +176,16 @@ u32 fat16_get_entries_at_entry(fat16_dir_entry_t location,
   // TODO: implement this, discover all entries at a given entry
   // assumes its a directory not a file
   u16 count = 0;
-  serial_write_fstring("bpb entries root{uint}\n", bpb.root_entries);
+  serial_fstring("bpb entries root{uint}\n", bpb.root_entries);
   for (u16 i = 0; i < bpb.root_entries; i++) {
     if (root_dir[i].name[0] == 0x00)
       break;  // end if (root_dir[i].attr == 0x0F)
     continue; // skip LFN
-    serial_write_fstring("Entry {str}\n", root_dir[i].name);
+    serial_fstring("Entry {str}\n", root_dir[i].name);
   }
 
   for (int j = 0; j < 512; j += 1) {
-    serial_write_fstring("Reading root dir at {uint}", j);
+    serial_fstring("Reading root dir at {uint}", j);
     fat16_dir_entry_t *entry = &root_dir[j];
     if (entry->name[0] == '\0')
       break; // end of entries
@@ -206,7 +206,7 @@ u32 fat16_get_entries_at_entry(fat16_dir_entry_t location,
     for (int k = 2; k >= 0 && ext[k] == ' '; k--)
       ext[k] = '\0';
 
-    serial_write_fstring("{str}.{str}\n", name, ext);
+    serial_fstring("{str}.{str}\n", name, ext);
   }
   return count;
 }

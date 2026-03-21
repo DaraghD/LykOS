@@ -1,6 +1,7 @@
 #include "vfs.h"
 #include "drivers/serial.h"
 #include "fs/fat16.h"
+#include "graphics/draw.h"
 #include "klib/kstring.h"
 #include "mem/kalloc.h"
 #include "terminal.h"
@@ -44,9 +45,22 @@ void list_files(kstring *path) {
     char name[13];
     normalise(files[i].name, name);
     if (files[i].attr & 0x10) {
-      terminal_fstring("DIR:  {str}\n", name);
+
+      u32 temp_color = term_color;
+      term_color = CRIMSON;
+      terminal_fstring("DIR:");
+      terminal_fstring("  {str}\n", name);
+      term_color = temp_color;
     } else {
-      terminal_fstring("FILE: {str}\n", name);
+      u32 temp_color = term_color;
+      term_color = GREEN;
+      terminal_fstring("FILE:");
+
+      // if (strncmp("ELF", name + 11, 3))
+      // term_color = GREEN;
+      term_color = LIME;
+      terminal_fstring(" {str}\n", name);
+      term_color = temp_color;
     }
   }
   kfree(files);
@@ -58,7 +72,7 @@ void list_files(kstring *path) {
 void *read_file(kstring *path, u64 *out_size) {
   to_upper(path);
 
-  serial_write_fstring("\ntrying to cat: {kstr}\n", path);
+  serial_fstring("\ntrying to cat: {kstr}\n", path);
   fat16_dir_entry_t *files = kalloc(100 * sizeof(fat16_dir_entry_t));
   u32 file_count = fat16_get_entries(files);
 
@@ -71,7 +85,9 @@ void *read_file(kstring *path, u64 *out_size) {
     char file_name[13];
     normalise(file.name, file_name);
 
-    if (is_file && (strncmp(file_name, path->buf, path->len) == 0)) {
+    bool file_found =
+        is_file && (strncmp(file_name, path->buf, path->len) == 0);
+    if (file_found) {
       terminal_fstring("File found! :{str}\n", file_name);
 
       *out_size = file.file_size;
@@ -126,12 +142,12 @@ kstring *vfs_split_path(const kstring *path) {
 // traverse directories from root
 bool valid_path(kstring *path) {
   if (path->buf[0] != '/') {
-    serial_write_fstring("VFS: (valid_path) Path must be absolute\n");
+    serial_fstring("VFS: (valid_path) Path must be absolute\n");
     return false;
   }
   kstring *dir_arr = vfs_split_path(path);
   u8 dir_count = arrlen(dir_arr);
-  serial_write_fstring("Directories in path={uint}\n", dir_count);
+  serial_fstring("Directories in path={uint}\n", dir_count);
   terminal_fstring("Directories in path={uint}\n", dir_count);
 
   // TODO:

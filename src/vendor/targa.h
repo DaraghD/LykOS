@@ -24,15 +24,15 @@ static unsigned int *tga_parse(unsigned char *ptr, int size) {
     return NULL;
   serial_writeln("TGA header bytes:");
   for (int i = 0; i < 18; i++) {
-    serial_write_fstring("{uint}:{uint} ", i, ptr[i]);
+    serial_fstring("{uint}:{uint} ", i, ptr[i]);
   }
   serial_writeln("");
   data = (unsigned int *)kalloc((w * h + 2) * sizeof(unsigned int));
   if (!data)
     return NULL;
 
-  serial_write_fstring("TGA: w={uint}, h={uint}, type={uint}\n", w, h, ptr[2]);
-  serial_write_fstring("TGA: ptr[16]={uint} (bpp), ptr[1]={uint}, "
+  serial_fstring("TGA: w={uint}, h={uint}, type={uint}\n", w, h, ptr[2]);
+  serial_fstring("TGA: ptr[16]={uint} (bpp), ptr[1]={uint}, "
                        "ptr[5]={uint}, ptr[6]={uint}\n",
                        ptr[16], ptr[1], ptr[5], ptr[6]);
   switch (ptr[2]) {

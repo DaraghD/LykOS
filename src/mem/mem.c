@@ -17,7 +17,7 @@ __attribute__((
     section(
         ".limine_requests"))) static volatile struct limine_paging_mode_request
     limine_paging_mode_request = {.id = LIMINE_PAGING_MODE_REQUEST,
-                                  .revision = 0};
+                                  .revision = 3};
 __attribute__((
     used,
     section(".limine_requests"))) static volatile struct limine_hhdm_request
@@ -33,6 +33,7 @@ static u64 exe = 0;
 static u64 highest_addr = 0;
 
 u64 hhdm_offset;
+u64 *kernel_pml4;
 
 void memmap_init(void) {
   struct limine_memmap_response *response = limine_memmap_request.response;
@@ -42,7 +43,14 @@ void memmap_init(void) {
   }
 
   hhdm_offset = limine_hhdm_request.response->offset;
-  serial_write_fstring("Memory map entries: {int}\n", response->entry_count);
+  serial_fstring("hhdm offset {uint}\n", hhdm_offset);
+
+  // store Limines PML4
+  u64 cr3;
+  asm volatile("mov %%cr3, %0" : "=r"(cr3));
+  kernel_pml4 = (u64 *)phys_to_virt(cr3 & PTE_ADDR_MASK);
+
+  serial_fstring("Memory map entries: {int}\n", response->entry_count);
 
   for (u64 i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
@@ -53,9 +61,8 @@ void memmap_init(void) {
     if (entry->type != LIMINE_MEMMAP_USABLE)
       is_usable = "False";
 
-    serial_write_fstring(
-        "Region {uint}: base={uint} length={uint} usable={str}\n", i,
-        entry->base, entry->length, is_usable);
+    serial_fstring("Region {uint}: base={uint} length={uint} usable={str}\n", i,
+                   entry->base, entry->length, is_usable);
 
     terminal_fstring("Region {uint}: base={uint} size={uint} type=", i,
                      entry->base, entry->length, entry->type);
@@ -130,11 +137,10 @@ void pmm_init(void) {
   for (u64 i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
     if (entry->type == LIMINE_MEMMAP_USABLE) {
-      serial_write_fstring("Entry is usable at base {uint} \n", entry->base);
+      serial_fstring("Entry is usable at base {uint} \n", entry->base);
       u64 start = entry->base / FRAME_SIZE;
       u64 count = entry->length / FRAME_SIZE;
-      serial_write_fstring("Marking {uint} frames free at {uint}\n", count,
-                           start);
+      serial_fstring("Marking {uint} frames free at {uint}\n", count, start);
       mark_frames_free(start, count);
     }
   }
@@ -169,8 +175,8 @@ void *alloc_frames(u64 frame_amount) {
 
           if (avail_contigous_frames == frame_amount) {
             mark_frames_used(start_idx, frame_amount);
-            serial_write_fstring("Allocating idx:{uint}, frames {uint}\n",
-                                 start_idx, avail_contigous_frames);
+            serial_fstring("Allocating idx:{uint}, frames {uint}\n", start_idx,
+                           avail_contigous_frames);
             return (void *)((start_idx * FRAME_SIZE) +
                             limine_hhdm_request.response->offset);
           }
@@ -187,10 +193,9 @@ void *alloc_frames(u64 frame_amount) {
 // can null
 void *pmm_alloc_frame(void) {
   int64_t idx = find_first_free_frame();
-  serial_write_fstring("Allocating frame {uint}\n", idx);
-  serial_write_fstring(
-      "Frame base: {uint}\n Frame virt: {uint}\n", idx * FRAME_SIZE,
-      (idx * FRAME_SIZE) + limine_hhdm_request.response->offset);
+  serial_fstring("Allocating frame {uint}\n", idx);
+  serial_fstring("Frame base: {uint}\n Frame virt: {uint}\n", idx * FRAME_SIZE,
+                 (idx * FRAME_SIZE) + limine_hhdm_request.response->offset);
 
   if (idx == -1)
     return NULL;
@@ -221,15 +226,15 @@ void print_memory_stats(void) {
 }
 
 void print_paging(void) {
-  struct limine_paging_mode_response *response =
-      limine_paging_mode_request.response;
+  struct limine_paging_mode_response response =
+      *limine_paging_mode_request.response;
 
-  terminal_fstring("Kernel offset {uint}",
+  terminal_fstring("Kernel offset {uint}\n",
                    limine_hhdm_request.response->offset);
   terminal_fstring("Kernel offset {hex}", limine_hhdm_request.response->offset);
   terminal_fstring("\nPAGING\n");
-  terminal_fstring("Mode : {uint}\n", response->mode);
-  terminal_fstring("Revision: {uint}\n", response->revision);
+  terminal_fstring("Mode : {uint}\n", response.mode);
+  terminal_fstring("Revision: {uint}\n", response.revision);
   terminal_fstring("Max Mode: {uint}\n", limine_paging_mode_request.max_mode);
   terminal_fstring("Min Mode: {uint}\n", limine_paging_mode_request.min_mode);
   terminal_fstring("Mode: {uint}\n", limine_paging_mode_request.mode);
@@ -246,4 +251,86 @@ void print_memmap(void) {
   terminal_fstring("\n Total nvs?~        (KB):{uint}\n", TO_KB(nvs));
   terminal_fstring("\n Bitmap size        (MB):{uint}\n",
                    TO_MB(highest_addr / (8 * FRAME_SIZE)));
+}
+
+// Maps a single 4KB page virt_addr to phys_addr
+// in the given page table. Allocates intermediate tables if needed.
+void map_page(u64 *pml4, u64 virt_addr, u64 phys_addr, u64 flags) {
+  serial_fstring("Mapping {uint} to {uint}\n", virt_addr, phys_addr);
+  // Extract the 9-bit index at each level from the virtual address
+  u64 pml4_idx = (virt_addr >> 39) & 0x1FF;
+  u64 pdpt_idx = (virt_addr >> 30) & 0x1FF;
+  u64 pd_idx = (virt_addr >> 21) & 0x1FF;
+  u64 pt_idx = (virt_addr >> 12) & 0x1FF;
+
+  // Walk PML4 -> PDPT
+  // If no PDPT exists yet, allocate one
+  if (!(pml4[pml4_idx] & PTE_PRESENT)) {
+    void *new_table = pmm_alloc_frame(); // returns virtual addr
+    memset(new_table, 0, FRAME_SIZE);
+    pml4[pml4_idx] =
+        virt_to_phys(new_table) | PTE_PRESENT | PTE_WRITE | PTE_USER;
+  }
+  u64 *pdpt = (u64 *)phys_to_virt(pml4[pml4_idx] & PTE_ADDR_MASK);
+
+  // Walk PDPT -> PD
+  if (!(pdpt[pdpt_idx] & PTE_PRESENT)) {
+    void *new_table = pmm_alloc_frame();
+    memset(new_table, 0, FRAME_SIZE);
+    pdpt[pdpt_idx] =
+        virt_to_phys(new_table) | PTE_PRESENT | PTE_WRITE | PTE_USER;
+  }
+  u64 *pd = (u64 *)phys_to_virt(pdpt[pdpt_idx] & PTE_ADDR_MASK);
+
+  // Walk PD -> PT
+  if (!(pd[pd_idx] & PTE_PRESENT)) {
+    void *new_table = pmm_alloc_frame();
+    memset(new_table, 0, FRAME_SIZE);
+    pd[pd_idx] = virt_to_phys(new_table) | PTE_PRESENT | PTE_WRITE | PTE_USER;
+  }
+  u64 *pt = (u64 *)phys_to_virt(pd[pd_idx] & PTE_ADDR_MASK);
+
+  // Set the actual page mapping
+  pt[pt_idx] = phys_addr | flags;
+}
+
+// Creates a new address space with kernel mappings in the upper half.
+// Returns the virtual address of the new PML4, or NULL on failure.
+u64 *create_address_space(void) {
+  u64 *new_pml4 = (u64 *)pmm_alloc_frame();
+  if (!new_pml4)
+    return NULL;
+
+  memset(new_pml4, 0, FRAME_SIZE);
+  // Copy the upper 256 entries (kernel half) from Limine's PML4.
+  // PML4 has 512 entries. Entries 0-255 cover the lower half (user space).
+  // Entries 256-511 cover the upper half (kernel space).
+  // By copying these, the kernel is accessible in every address space.
+  for (int i = 256; i < 512; i++) {
+    new_pml4[i] = kernel_pml4[i];
+  }
+
+  return new_pml4;
+}
+
+// Switch to a different address space by loading its PML4 into CR3
+void switch_address_space(u64 *pml4) {
+  u64 cr3;
+  asm volatile("mov %%cr3, %0" : "=r"(cr3));
+  serial_fstring("Switching addr space from 0x{hex} to 0x{hex}\n", cr3, pml4);
+  u64 phys = virt_to_phys((void *)pml4);
+  asm volatile("mov %0, %%cr3" : : "r"(phys) : "memory");
+}
+
+void debug_cr3(void) {
+  u64 cr3;
+  asm volatile("mov %%cr3, %0" : "=r"(cr3));
+  // assuming if addr space is not kernel its userspace
+  // although we could have ring 0 processes
+  if (&cr3 == kernel_pml4) {
+    serial_fstring("KERNEL SPACE : TRUE\n");
+  } else {
+    serial_fstring("USER SPACE : TRUE\n");
+  }
+  serial_fstring("CR3 : 0x{hex}\n", cr3);
 }

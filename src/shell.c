@@ -18,14 +18,27 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+static void print_help(void) {
+
+  terminal_fstring("Command list...\n"
+                   " ls             - lists files in current directory\n"
+                   " exec $filename - executes ELF file               \n"
+                   " cat $filename  - prints file contents to screen  \n"
+                   " logo           - redraws screen with logo)       \n"
+                   " mmap           - prints memory map information   \n"
+                   " memstats       - prints memory allocation stats\n"
+                   " dbgalloc       - allocates 1 frame\n"
+                   " tasks          - shows currently running tasks\n"
+                   " freelist       - prints kallocs freelist \n");
+}
 // max length of a path is 256
 char cwd_buf[256];
 kstring cwd = KSTRING(cwd_buf, 256);
 
 static int8_t change_dir(kstring *path) {
   if (path->len > cwd.cap) {
-    serial_write_fstring("Path length {uint} is bigger than {uint}\n",
-                         path->len, cwd.cap);
+    serial_fstring("Path length {uint} is bigger than {uint}\n", path->len,
+                   cwd.cap);
     return -1;
   }
 
@@ -35,7 +48,7 @@ static int8_t change_dir(kstring *path) {
 }
 
 static void print_cwd(void) {
-  serial_write_fstring("{str}\n", cwd.buf);
+  serial_fstring("{str}\n", cwd.buf);
   terminal_fstring("{str}\n", cwd.buf);
 }
 
@@ -97,10 +110,10 @@ void shell_init(void) {
   kstring init_path = KSTRING(init_path_buf, 256);
   APPEND_STR(&init_path, "/");
   if (init_path.error)
-    serial_write_fstring("Error setting initial path\n");
+    serial_fstring("Error setting initial path\n");
 
   if (change_dir(&init_path) != 0)
-    serial_write_fstring("Error setting initial path\n");
+    serial_fstring("Error setting initial path\n");
 }
 
 void shell_execute(kstring *line) {
@@ -156,10 +169,10 @@ void shell_execute(kstring *line) {
     kstring path = args.args[0];
     u64 size = 0;
     void *file = read_file(&path, &size);
-    serial_write_fstring("Exec elf : {kstr}", &path);
+    serial_fstring("Exec elf : {kstr}", &path);
 
     if (file == NULL) {
-      serial_write_fstring("cant find file?");
+      serial_fstring("cant find file?");
       terminal_fstring("Can't find file\n");
       goto skip_history;
     }
@@ -175,6 +188,9 @@ void shell_execute(kstring *line) {
     int ret = task_create_elf(name_buf, file);
     if (ret < 0)
       terminal_fstring("Could not exec file\n");
+    while (tasks[ret].state != TASK_DEAD) {
+      yield();
+    }
   }
 
   else if (kstrncmp(line, "ascii", 5))
@@ -207,6 +223,9 @@ void shell_execute(kstring *line) {
   else if (kstrncmp(line, "mmap", 4))
     print_memmap();
 
+  else if (kstrncmp(line, "help", 4))
+    print_help();
+
   else if (kstrncmp(line, "allocstats", 4))
     print_allocation_stats();
 
@@ -224,9 +243,6 @@ void shell_execute(kstring *line) {
 
   else if (kstrncmp(line, "freelist", 8))
     debug_freelist();
-
-  else if (kstrncmp(line, "uptime", 6))
-    draw_uptime();
 
   else if (kstrncmp(line, "tasks", 5))
     debug_tasks();

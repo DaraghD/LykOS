@@ -11,6 +11,7 @@
 #include "mem/mem.h"
 #include "proc/task.h"
 #include "terminal.h"
+#include "user/lykosapi.h"
 #include "vendor/stb_ds.h"
 #include <stdint.h>
 
@@ -24,7 +25,7 @@ void kmain(void) {
   gdt_init();
   idt_init();
   pic_remap();
-  pit_init(100);
+  pit_init(PIT_FREQ_HZ);
   memmap_init();
   pmm_init();
   graphics_init();
@@ -33,7 +34,7 @@ void kmain(void) {
   // fat16_list_files();
 
   terminal_init();
-  // serial_write_fstring("Found file: cluster {uint}, size
+  // serial_fstring("Found file: cluster {uint}, size
   // {uint},name={str}\n",
   //                      entry.first_cluster, entry.file_size, entry.name);
 
@@ -57,7 +58,7 @@ void kmain(void) {
                   .cap = strlen("/directory/test/abc") + 1};
   kstring *parts = vfs_split_path(&path);
   for (int i = 0; i < arrlen(parts); i++) {
-    serial_write_fstring("{str}\n", parts[i].buf);
+    serial_fstring("{str}\n", parts[i].buf);
     // terminal_fstring("{str}\n", parts[i].buf);
   }
 
@@ -67,12 +68,6 @@ void kmain(void) {
   task_create("spinner", &pit_spinner_tick);
 
   while (1) {
-    if (need_resched) {
-      serial_write_fstring("Checking if need resched");
-      need_resched = 0;
-      yield();
-    }
-    // yield();
   }
   hcf();
 }

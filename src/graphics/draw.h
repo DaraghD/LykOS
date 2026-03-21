@@ -6,11 +6,26 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define GREEN 0x00FF00
-#define BLUE  0x0000FF
-#define BLACK 0x000000
-#define RED   0xFF0000
-#define WHITE 0xFFFFFF
+#define GREEN 		 0x00FF00
+#define BLUE  		 0x0000FF
+#define BLACK 		 0x000000
+#define RED   		 0xFF0000
+#define WHITE 		 0xFFFFFF
+#define YELLOW       0xFFFF00
+#define CYAN         0x00FFFF
+#define MAGENTA      0xFF00FF
+#define ORANGE       0xFF8800
+#define PURPLE       0x8800FF
+#define PINK         0xFF66AA
+#define GREY         0x888888
+#define DARK_GREY    0x444444
+#define LIME         0x88FF00
+#define TEAL         0x008888
+#define RUST         0xB7410E
+#define CRIMSON      0xDC143C
+#define BURNT_ORANGE 0xCC5500
+#define TERRACOTTA   0xE2725B
+#define MARS_RED     0xAD3A2D
 
 typedef struct limine_framebuffer limine_framebuffer;
 

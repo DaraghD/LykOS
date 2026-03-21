@@ -22,7 +22,7 @@ volatile bool arrow_down = false;
 volatile bool arrow_left = false;
 volatile bool arrow_right = false;
 
-__attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame) {
+void isr_ps2_keyboard(interrupt_frame *frame) {
   (void)frame;
   char scancode = inb(PS2_DATA_PORT);
   u8 next_head = (keyboard_head + 1) % KEYBOARD_BUFFER_SIZE;
@@ -37,18 +37,16 @@ __attribute__((interrupt)) void isr_ps2_keyboard(interrupt_frame *frame) {
 #define EXTENDED 0xE0
 
 void keyboard_process(void) {
-  serial_write_fstring("[KEYBOARD] Echo...\n");
-
   static bool extended = false;
   while (1) {
-    serial_write_fstring("[TASK] Keyboard\n");
+    serial_fstring("[TASK] Keyboard\n");
     // test that kernel can take away cpu after time slice expires
     //  for (u64 i = 0; i < 999999999; i++)
-    //  serial_write_fstring("{uint}\n", i);
+    //  serial_fstring("{uint}\n", i);
 
     while (keyboard_tail != keyboard_head) {
       u64 sc = keyboard_buffer[keyboard_tail];
-      serial_write_fstring("scancode={uint}\n", sc);
+      serial_fstring("scancode={uint}\n", sc);
       keyboard_tail = (keyboard_tail + 1) % KEYBOARD_BUFFER_SIZE;
 
       if (sc == EXTENDED) {
