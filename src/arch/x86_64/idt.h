@@ -18,11 +18,11 @@ typedef struct {
 } __attribute__((packed)) IDTEntry;
 
 typedef struct {
-    uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
-    uint64_t rdi, rsi, rbp, rbx, rdx, rcx, rax;
-    uint64_t vector;
-    uint64_t error_code;
-    uint64_t rip, cs, rflags, rsp, ss;
+    u64 r15, r14, r13, r12, r11, r10, r9, r8;
+    u64 rdi, rsi, rbp, rbx, rdx, rcx, rax;
+    u64 vector;
+    u64 error_code;
+    u64 rip, cs, rflags, rsp, ss;
 } interrupt_frame;
 
 void set_idt_gate(u32 index, u64 handler, u16 selector, u8 flags);

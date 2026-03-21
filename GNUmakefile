@@ -132,6 +132,9 @@ obj/%.asm.o: %.asm GNUmakefile
 	mkdir -p "$(dir $@)"
 	nasm $(NASMFLAGS) $< -o $@
 
+.PHONY: progs
+progs:
+	make -C progs
 # Remove object files and the final executable.
 .PHONY: clean
 clean:

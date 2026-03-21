@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 # call makefile to compile
-make -j$(nproc)
+make clean
+make progs # make user programs
+make -j$(nproc) 
 
 # assumes limine is built and executable at ./limine/limine
 
@@ -44,14 +46,14 @@ QEMU_CMD=(
     -m "$RAM"
     -cdrom "$ISO"
     -boot d
-    -d int
+    -d strace,int
     -no-reboot
     -D qemu.lg
     -serial file:serial.lg #-serial stdio
     $DEBUG_FLAGS
     -hda "$DISK"
 )
-
+# -d int,cpu,guest_errors
 # need to diswon and & for gdb and clion
 if [[ $DEBUG_FLAGS ]]; then
     "${QEMU_CMD[@]}" &

@@ -68,6 +68,7 @@ void kmain(void) {
   task_create("spinner", &pit_spinner_tick);
 
   while (1) {
+    yield();
   }
   hcf();
 }

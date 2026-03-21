@@ -41,7 +41,6 @@ typedef struct Task {
   void *segments[8];
   u64 segment_count;
   bool is_elf; // now assumes all elfs are usermode
-  u64 *page_table;
   // user
   u64 user_rip;
   u64 user_rsp;

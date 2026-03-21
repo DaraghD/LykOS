@@ -276,7 +276,6 @@ int task_create_elf(const char *name, void *file) {
     return -1;
 
   Task *t = &tasks[id];
-  t->page_table = proc_addr_space;
 
   // kernel stack
   t->stack = kalloc(TASK_STACK_SIZE);

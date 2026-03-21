@@ -3,7 +3,6 @@
 #include "drivers/pit.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
-#include "graphics/draw.h"
 #include "mem/mem.h"
 #include "proc/task.h"
 #include "terminal.h"
