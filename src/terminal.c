@@ -6,8 +6,10 @@
 #include "klib/kstring.h"
 #include "mem/arena.h"
 #include "mem/kalloc.h"
+#include "proc/task.h"
 #include "req.h" //lsp bug leave included
 #include "shell.h"
+#include "user/input.h"
 #include "vendor/targa.h"
 #include <stdarg.h>
 #include <stdbool.h>
@@ -41,22 +43,6 @@ static const char *lykos_ascii =
     "                /  \\__$$ |                               \n"
     "                $$    $$/                                \n"
     "                 $$$$$$/                                 \n";
-
-char scancode_to_ascii[128] = {
-    0,   27,  '1',  '2',  '3',  '4', '5', '6',  '7', '8', '9', '0',
-    '-', '=', '\b', '\t', 'q',  'w', 'e', 'r',  't', 'y', 'u', 'i',
-    'o', 'p', '[',  ']',  '\n', 0,   'a', 's',  'd', 'f', 'g', 'h',
-    'j', 'k', 'l',  ';',  '\'', '`', 0,   '\\', 'z', 'x', 'c', 'v',
-    'b', 'n', 'm',  ',',  '.',  '/', 0,   '*',  0,   ' ',
-};
-
-char scancode_to_ascii_caps[128] = {
-    0,   27,  '!',  '@',  '#',  '$', '%', '^', '&', '*', '(', ')',
-    '_', '+', '\b', '\t', 'Q',  'W', 'E', 'R', 'T', 'Y', 'U', 'I',
-    'O', 'P', '{',  '}',  '\n', 0,   'A', 'S', 'D', 'F', 'G', 'H',
-    'J', 'K', 'L',  ':',  '"',  '~', 0,   '|', 'Z', 'X', 'C', 'V',
-    'B', 'N', 'M',  '<',  '>',  '?', 0,   '*', 0,   ' ',
-};
 
 typedef struct {
   kstring entries[1000];
@@ -182,18 +168,22 @@ bool is_alphanum(char c) {
 
 #define BACKSPACE '\b'
 #define ENTER '\n'
-void terminal_process_input(u16 sc) {
-  // release keys
-  if (sc & 0x80) {
-    return;
-  }
-  u64 c;
-  if (shift)
-    c = scancode_to_ascii_caps[sc];
-  else
-    c = scancode_to_ascii[sc];
 
-  if (c == 'c' && ctrl) {
+void terminal_process(void) {
+  while (1) {
+    if (current_input_target == KERNEL_TERMINAL) {
+      while (key_event_tail != key_event_head) {
+        KeyEvent key = key_event_buffer[key_event_tail];
+        key_event_tail = (key_event_tail + 1) % KEYBOARD_BUFFER_SIZE;
+        terminal_process_input(key);
+      }
+    }
+    preempt_check();
+  }
+}
+
+void terminal_process_input(KeyEvent input) {
+  if (input.key == 'c' && (input.modifiers & MOD_CTRL)) {
     u32 temp_color = term_color;
     term_color = 0xFFFFFFFF;
     draw_string_term("^C");
@@ -203,18 +193,18 @@ void terminal_process_input(u16 sc) {
     return;
   }
 
-  if (c == 'h' && ctrl) {
+  if (input.key == 'h' && (input.modifiers & MOD_CTRL)) {
     print_history();
     return;
   }
 
-  if (c == 'l' && ctrl) {
+  if (input.key == 'l' && (input.modifiers & MOD_CTRL)) {
     terminal_clearscreen();
     terminal_newline();
     return;
   }
 
-  if (sc == DOWN_ARROW) {
+  if (input.key == KEY_DOWN_ARROW) {
     if (hist.count == 0)
       return;
     if (hist_position <= 0)
@@ -237,7 +227,7 @@ void terminal_process_input(u16 sc) {
     }
     draw_cursor_term();
     return;
-  } else if (sc == UP_ARROW) {
+  } else if (input.key == KEY_UP_ARROW) {
     if (hist.count == 0)
       return;
     if (hist_position == hist.count)
@@ -260,14 +250,14 @@ void terminal_process_input(u16 sc) {
     }
     draw_cursor_term();
     return;
-  } else if (c == ENTER) {
+  } else if (input.key == ENTER) {
     fill_char(term_xpos + 8 * g_scale, term_ypos, BLACK);
     fill_char(term_xpos, term_ypos, BLACK);
     shell_execute(&command_content);
     draw_cursor_term();
     hist_position = 0;
     return;
-  } else if (c == BACKSPACE) {
+  } else if (input.key == BACKSPACE) {
     bool line_not_empty = command_content.len > 0;
     if (line_not_empty) {
       command_content.buf[command_content.len - 1] = '\0';
@@ -284,19 +274,19 @@ void terminal_process_input(u16 sc) {
       }
     }
     return;
-  } else if (sc == LEFT_ARROW) {
+  } else if (input.key == KEY_LEFT_ARROW) {
     return;
-  } else if (sc == RIGHT_ARROW) {
+  } else if (input.key == KEY_RIGHT_ARROW) {
     return;
   }
 
-  if (!is_alphanum(c))
+  if (!is_alphanum(input.key))
     return;
 
-  serial_fstring("Writing char: {char} \n", c);
-  append_char(&command_content, c);
+  serial_fstring("Writing char: {char} \n", input.key);
+  append_char(&command_content, input.key);
   fill_char(term_xpos, term_ypos, BLACK);
-  draw_char_term(c);
+  draw_char_term(input.key);
   serial_fstring("Command buffer size : {int}\n", command_content.len);
   draw_cursor_term();
   hist_position = 0;

@@ -1,5 +1,6 @@
 #include "lykosapi.h"
 #include "arch/x86_64/idt.h"
+#include "drivers/ps2.h"
 #include "drivers/serial.h"
 #include "graphics/draw.h"
 #include "mem/mem.h"
@@ -49,4 +50,14 @@ i64 map_fb(interrupt_frame *frame) {
   }
 
   return fb_vaddr;
+}
+
+i64 get_key_event(interrupt_frame *frame) {
+  KeyEvent *ev_ptr = (KeyEvent *)frame->rdi;
+  if (key_event_tail == key_event_head) {
+    return 0;
+  }
+  *ev_ptr = key_event_buffer[key_event_tail];
+  key_event_tail = (key_event_tail + 1) % KEYBOARD_BUFFER_SIZE;
+  return 1;
 }

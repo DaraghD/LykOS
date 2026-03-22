@@ -14,6 +14,7 @@
 // #define STBDS_REALLOC(context, ptr, size) krealloc(ptr, size)
 // #define STBDS_FREE(context, ptr) kfree(ptr)
 #include "terminal.h"
+#include "user/input.h"
 #include "vendor/stb_ds.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -188,9 +189,11 @@ void shell_execute(kstring *line) {
     int ret = task_create_elf(name_buf, file);
     if (ret < 0)
       terminal_fstring("Could not exec file\n");
+    current_input_target = USERSPACE;
     while (tasks[ret].state != TASK_DEAD) {
       yield();
     }
+    current_input_target = KERNEL_TERMINAL;
   }
 
   else if (kstrncmp(line, "ascii", 5))

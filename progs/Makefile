@@ -1,7 +1,8 @@
 # compiles all programs in progs/ and moves them to the filesystem
 #
 CC = gcc
-CFLAGS = -ffreestanding -Wall -static -no-pie -O3 
+CFLAGS = -ffreestanding -Wall -static -no-pie -O3 -fno-stack-protector
+#CFLAGS = -ffreestanding -Wall -static -no-pie -O3 -nostartfiles -nostdlib -fno-stack-protector
 # CFLAGS = -ffreestanding -Wall -static -no-pie -O3 -mno-sse -mno-sse2 
 LDFLAGS = -nostdlib crt0.o
 FAT_IMG = ../fat16.img
@@ -27,10 +28,11 @@ install: $(ELFS)
 		echo "MCOPY $$f"; \
 		mcopy -i $(FAT_IMG) -o $$f ::/$$f; \
 	done
-	rm -f *.elf *.o
+	rm -f *.o
 
 
 clean:
-	rm -f *.elf *.o
+	rm -f *.o
+	# rm -f *.elf *.o
 
 .PHONY: all install clean

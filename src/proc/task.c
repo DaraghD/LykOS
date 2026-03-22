@@ -57,6 +57,7 @@ int task_create(const char *name, void (*entry)(void)) {
   t->regs.rip = (u64)entry;
   t->regs.rsp = stack_top;
   t->regs.cr3 = virt_to_phys((void *)kernel_pml4);
+  t->regs.rflags = 0x202;
 
   t->state = TASK_READY;
   t->slice = TASK_SLICE_DEFAULT;
@@ -93,6 +94,15 @@ void elf_trampoline(void) {
 }
 
 void yield(void) {
+  // serial_fstring("Current task {str}\n", tasks[current_task].name);
+  // for (int task_id = 0; task_id < MAX_TASKS; task_id++) {
+  //   Task *t = &tasks[task_id];
+  //   if (t->state == TASK_UNUSED)
+  //     continue;
+  //   serial_fstring("Task {str} state {str} id {uint}\n", t->name, t->state,
+  //   task_id);
+  // }
+
   asm volatile("cli"); // we dont wanna get pre-empted during a yield
   u64 cr3;
   asm volatile("mov %%cr3, %0" : "=r"(cr3));
@@ -128,15 +138,11 @@ void yield(void) {
                  next->regs.rip, next->regs.rsp);
   serial_fstring("  rsp before switch = {hex}\n", tasks[prev].regs.rsp);
   serial_fstring("Saving {str}\n", tasks[prev].name);
-
+  asm volatile("sti");
   switch_task(&tasks[prev].regs, &next->regs);
-
-  serial_fstring("Back in {str}\n", tasks[current_task].name);
-  serial_fstring("Resumed! rsp now = {hex}\n", tasks[current_task].regs.rsp);
 
 end:
   asm volatile("sti");
-  serial_fstring("After STI\n");
 }
 
 // TODO: need a freetask function so task_kill and exit dont have duplicated
@@ -219,7 +225,8 @@ void debug_tasks(void) {
     ticks_to_time(t->start_tick, buf);
     terminal_fstring("{str} : ", buf);
 
-    // terminal_fstring("{str} : SLICE : {uint}\n", task_state_to_str(t->state),
+    // terminal_fstring("{str} : SLICE : {uint}\n",
+    // task_state_to_str(t->state),
     //                  t->slice);
     terminal_fstring("{str} \n", task_state_to_str(t->state));
   }

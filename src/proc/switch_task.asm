@@ -23,6 +23,7 @@ section .text
 
 		pushfq ; Save RFLAGS
 		pop rax
+		or rax, (1 << 9)       ; force IF=1 in saved rflags
 		mov [rdi + 128], rax
 
 		mov rax, [rsp] ; Save RIP

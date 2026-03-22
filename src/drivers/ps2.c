@@ -6,6 +6,7 @@
 #include <graphics/draw.h>
 #include <stdbool.h>
 #include <stdint.h>
+
 #define SHIFT_DOWN 0x2A
 #define SHIFT_UP 0xAA
 #define CTRL_DOWN 0x1D
@@ -21,6 +22,10 @@ volatile bool arrow_up = false;
 volatile bool arrow_down = false;
 volatile bool arrow_left = false;
 volatile bool arrow_right = false;
+
+volatile u8 key_event_head = 0;
+volatile u8 key_event_tail = 0;
+volatile KeyEvent key_event_buffer[KEYBOARD_BUFFER_SIZE];
 
 void isr_ps2_keyboard(interrupt_frame *frame) {
   (void)frame;
@@ -39,14 +44,8 @@ void isr_ps2_keyboard(interrupt_frame *frame) {
 void keyboard_process(void) {
   static bool extended = false;
   while (1) {
-    serial_fstring("[TASK] Keyboard\n");
-    // test that kernel can take away cpu after time slice expires
-    //  for (u64 i = 0; i < 999999999; i++)
-    //  serial_fstring("{uint}\n", i);
-
     while (keyboard_tail != keyboard_head) {
       u64 sc = keyboard_buffer[keyboard_tail];
-      serial_fstring("scancode={uint}\n", sc);
       keyboard_tail = (keyboard_tail + 1) % KEYBOARD_BUFFER_SIZE;
 
       if (sc == EXTENDED) {
@@ -55,49 +54,80 @@ void keyboard_process(void) {
       }
 
       bool is_release = sc & 0x80;
-      sc &= 0x7F; // remove release bit
+      sc &= 0x7F;
 
       switch (sc) {
       case 0x2A:
         shift = !is_release;
-        continue; // left shift
+        continue;
       case 0x36:
         shift = !is_release;
-        continue; // right shift
+        continue;
       case 0x1D:
         ctrl = !is_release;
-        continue; // ctrl
-      }
-
-      if (extended) {
-        extended = false;
-
-        if (is_release)
-          continue;
-
-        switch (sc) {
-        case 0x48:
-          terminal_process_input(UP_ARROW);
-          break;
-        case 0x50:
-          terminal_process_input(DOWN_ARROW);
-          break;
-        case 0x4B:
-          terminal_process_input(LEFT_ARROW);
-          break;
-        case 0x4D:
-          terminal_process_input(RIGHT_ARROW);
-          break;
-        default:
-          break;
-        }
         continue;
       }
 
       if (is_release)
         continue;
 
-      terminal_process_input(sc);
+      u8 mods = 0;
+      if (shift)
+        mods |= MOD_SHIFT;
+      if (ctrl)
+        mods |= MOD_CTRL;
+
+      u16 key = 0;
+
+      if (extended) {
+        extended = false;
+        switch (sc) {
+        case 0x48:
+          key = KEY_UP_ARROW;
+          break;
+        case 0x50:
+          key = KEY_DOWN_ARROW;
+          break;
+        case 0x4B:
+          key = KEY_LEFT_ARROW;
+          break;
+        case 0x4D:
+          key = KEY_RIGHT_ARROW;
+          break;
+        default:
+          continue;
+        }
+      } else {
+        key = shift ? scancode_to_ascii_caps[sc] : scancode_to_ascii[sc];
+
+        if (key == 0) {
+          switch (sc) {
+          case 0x01:
+            key = KEY_ESCAPE;
+            break;
+          case 0x0E:
+            key = KEY_BACKSPACE;
+            break;
+          case 0x0F:
+            key = KEY_TAB;
+            break;
+          case 0x1C:
+            key = KEY_ENTER;
+            break;
+          case 0x39:
+            key = ' ';
+            break;
+          default:
+            continue;
+          }
+        }
+      }
+
+      u8 next = (key_event_head + 1) % KEYBOARD_BUFFER_SIZE;
+      if (next != key_event_tail) {
+        key_event_buffer[key_event_head] = (KeyEvent){key, mods};
+        key_event_head = next;
+      }
     }
     preempt_check();
   }

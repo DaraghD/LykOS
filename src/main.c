@@ -14,6 +14,7 @@
 #include "proc/task.h"
 #include "shell.h"
 #include "terminal.h"
+#include "user/input.h"
 #include "user/lykosapi.h"
 #include "vendor/stb_ds.h"
 #include <stdint.h>
@@ -66,11 +67,11 @@ void kmain(void) {
   task_create("keyboard", &keyboard_process);
   task_create("uptime-clock", &draw_clock);
   task_create("spinner", &pit_spinner_tick);
+  task_create("terminal", &terminal_process);
   kstring x = make_kstring("exec write", 10);
   // shell_execute(&x);
 
   while (1) {
-    yield();
   }
   hcf();
 }

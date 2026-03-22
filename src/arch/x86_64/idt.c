@@ -122,10 +122,7 @@ void isr_gpf(interrupt_frame *frame) {
 void isr_pit(interrupt_frame *frame) {
   (void)frame;
   pit_tick();
-  serial_fstring("tick\n");
-
-  u64 cr3;
-  asm volatile("mov %%cr3, %0" : "=r"(cr3));
+  serial_fstring("tick pit 876\n");
 
   // debug, laggy
   // serial_fstring("timer cr3 = {uint}\n", cr3);
@@ -136,12 +133,14 @@ void isr_pit(interrupt_frame *frame) {
     Task *t = &tasks[current_task];
 
     if (t->state == TASK_RUNNING && t->slice > 0) {
+      serial_fstring("decrementing timeslice of {str}\n", t->name);
       t->slice--;
 
       if (t->slice == 0) {
         t->slice = TASK_SLICE_DEFAULT;
-        end_of_interrupt();
         serial_fstring("Pre-empting yield\n");
+        end_of_interrupt();
+        // asm volatile("sti");
         yield();
       }
     }
@@ -187,6 +186,9 @@ void isr_syscall(interrupt_frame *frame) {
     break;
   case 3:
     frame->rax = map_fb(frame);
+    break;
+  case 4:
+    frame->rax = get_key_event(frame);
     break;
   }
 }

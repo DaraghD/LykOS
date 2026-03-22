@@ -31,7 +31,7 @@ ifeq ($(TOOLCHAIN),llvm)
 endif
 
 # User controllable C flags.
-CFLAGS := -g -O1 -pipe -I. -Wstrict-prototypes
+CFLAGS := -g -O3 -pipe -I. -Wstrict-prototypes
 
 # User controllable C preprocessor flags. We set none by default.
 CPPFLAGS :=
@@ -70,9 +70,9 @@ override CFLAGS += \
     -mno-mmx \
     -mno-red-zone \
     -mcmodel=kernel \
+    -mno-sse \
+    -mno-sse2 \
 
-    # -mno-sse \
-    # -mno-sse2 \
     # -msse  \
     # -msse2 \
 # Internal C preprocessor flags that should not be changed by the user.
