@@ -7,28 +7,28 @@
 #include "fs/fat16.h"
 #include "fs/vfs.h"
 #include "graphics/draw.h"
+#include "klib/kstring.h"
 #include "klib/widget.h"
+#include "mem/kalloc.h"
 #include "mem/mem.h"
 #include "proc/task.h"
+#include "shell.h"
 #include "terminal.h"
 #include "user/lykosapi.h"
 #include "vendor/stb_ds.h"
 #include <stdint.h>
 
-static void hcf(void) {
-  for (;;) {
-    asm("hlt");
-  }
-}
+extern void sse_init(void);
 
 void kmain(void) {
+  graphics_init();
   gdt_init();
   idt_init();
   pic_remap();
   pit_init(PIT_FREQ_HZ);
   memmap_init();
   pmm_init();
-  graphics_init();
+  sse_init();
   asm volatile("sti");
   fat16_init(); // assumes fat on disk
   // fat16_list_files();
@@ -66,6 +66,8 @@ void kmain(void) {
   task_create("keyboard", &keyboard_process);
   task_create("uptime-clock", &draw_clock);
   task_create("spinner", &pit_spinner_tick);
+  kstring x = make_kstring("exec write", 10);
+  // shell_execute(&x);
 
   while (1) {
     yield();

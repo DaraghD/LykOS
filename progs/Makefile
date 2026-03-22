@@ -1,7 +1,8 @@
 # compiles all programs in progs/ and moves them to the filesystem
 #
 CC = gcc
-CFLAGS = -ffreestanding -Wall -static -no-pie
+CFLAGS = -ffreestanding -Wall -static -no-pie -O3 
+# CFLAGS = -ffreestanding -Wall -static -no-pie -O3 -mno-sse -mno-sse2 
 LDFLAGS = -nostdlib crt0.o
 FAT_IMG = ../fat16.img
 

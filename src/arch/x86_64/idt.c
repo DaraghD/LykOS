@@ -91,7 +91,7 @@ void idt_init(void) {
   }
 }
 
-__attribute__((interrupt)) void isr_divide_error(interrupt_frame *frame) {
+void isr_divide_error(interrupt_frame *frame) {
   (void)frame;
   serial_writeln("Divide by zero!");
 }
@@ -162,7 +162,7 @@ void isr_pagefault(interrupt_frame *frame) {
   serial_fstring("  rbx = {hex}\n", frame->rbx);
   serial_fstring("  rcx = {hex}\n", frame->rcx);
   serial_fstring("  rdx = {hex}\n", frame->rdx);
-  serial_fstring("  current task = {uint}\n", (u64)current_task);
+  serial_fstring("  current task = {uint}\n", current_task);
   serial_fstring("  task name = {str}\n", tasks[current_task].name);
   u64 *stack = (u64 *)frame->rsp;
   serial_writeln("Stack dump:");

@@ -137,9 +137,21 @@ void pmm_init(void) {
   for (u64 i = 0; i < response->entry_count; i++) {
     struct limine_memmap_entry *entry = response->entries[i];
     if (entry->type == LIMINE_MEMMAP_USABLE) {
+      u64 base = entry->base;
+      u64 len = entry->length;
+
+      // skip anything below 1MB
+      // HACK: uefi bug
+      // if (base < MB) {
+      //   if (base + len <= MB)
+      //     continue;
+      //   len -= (MB - base);
+      //   base = MB;
+      // }
+
       serial_fstring("Entry is usable at base {uint} \n", entry->base);
-      u64 start = entry->base / FRAME_SIZE;
-      u64 count = entry->length / FRAME_SIZE;
+      u64 start = base / FRAME_SIZE;
+      u64 count = len / FRAME_SIZE;
       serial_fstring("Marking {uint} frames free at {uint}\n", count, start);
       mark_frames_free(start, count);
     }
@@ -177,6 +189,10 @@ void *alloc_frames(u64 frame_amount) {
             mark_frames_used(start_idx, frame_amount);
             serial_fstring("Allocating idx:{uint}, frames {uint}\n", start_idx,
                            avail_contigous_frames);
+            serial_fstring("Allocation at 0x{hex}, phys 0x{hex}\n",
+                           (start_idx * FRAME_SIZE) +
+                               limine_hhdm_request.response->offset,
+                           start_idx * FRAME_SIZE);
             return (void *)((start_idx * FRAME_SIZE) +
                             limine_hhdm_request.response->offset);
           }

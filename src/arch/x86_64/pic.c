@@ -12,7 +12,9 @@
 #define PIC2_DATA (PIC2 + 1)
 
 void pic_remap(void) {
+  iowait();
   u8 a1 = inb(PIC1_DATA); // save masks
+  iowait();
   u8 a2 = inb(PIC2_DATA);
 
   outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -42,5 +44,7 @@ void pic_remap(void) {
 
   // outb(0x21, 0xFD); // only IRQ1 is unmasked
   outb(0x21, 0xFC); // unmask IRQ0 and IRQ1 (11111100b)
+  iowait();
   outb(0xA1, 0xFF); // all slave IRQs masked
+  iowait();
 }

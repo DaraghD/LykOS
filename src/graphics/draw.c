@@ -1,5 +1,6 @@
 #include "draw.h"
 #include "drivers/serial.h"
+#include "terminal.h"
 #include "vendor/font.h"
 #include "vendor/limine.h"
 #include <stddef.h>
@@ -29,12 +30,6 @@ __attribute__((
     section(
         ".limine_requests"))) static volatile struct limine_framebuffer_request
     framebuffer_request = {.id = LIMINE_FRAMEBUFFER_REQUEST, .revision = 0};
-
-static void hcf(void) {
-  for (;;) {
-    asm("hlt");
-  }
-}
 
 u32 g_width;
 u32 g_height;
