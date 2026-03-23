@@ -1,5 +1,6 @@
 #pragma once
 
+#include "proc/task.h"
 #include "req.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,4 +49,4 @@ typedef struct {
   u64 segment_count;
 } loaded_elf;
 
-bool load_elf(void *file, loaded_elf *out, u64 *pml4);
+bool load_elf(Task *t,void *file, loaded_elf *out, u64 *pml4);

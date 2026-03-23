@@ -29,6 +29,13 @@ enum task_state {
 #undef X
 };
 
+// Virtual memory area
+typedef struct VMA{
+    u64 start;
+    u64 end;
+    struct VMA *next;
+}VMA;
+
 typedef struct Task {
   Registers regs;
   enum task_state state;
@@ -45,11 +52,13 @@ typedef struct Task {
   u64 user_rip;
   u64 user_rsp;
   u64 user_cr3;
+  VMA* vma_list;
+
 } Task;
 
 #define TASK_STACK_SIZE 0x4000
 #define TASK_SLICE_DEFAULT 5
-#define MAX_TASKS 15
+#define MAX_TASKS 128
 
 extern Task tasks[MAX_TASKS];
 extern int current_task;

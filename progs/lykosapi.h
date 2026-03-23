@@ -10,6 +10,7 @@ typedef struct{
 #define SYS_WRITE 2
 #define SYS_MMAP_FB 3
 #define SYS_GET_KV 4
+#define SYS_MMAP 5
 
 // a = rax, D = rdi, S = rsi, d = rdx
 // syscall with 0 args
@@ -54,3 +55,5 @@ static inline u32 *mmap_fb(void) { return (u32 *)syscall0(SYS_MMAP_FB); }
 static inline i64 get_key_event(KeyEvent *ev_ptr) {
   return syscall1(SYS_GET_KV, (u64)ev_ptr);
 }
+
+static inline u64 mmap(u64 size) { return syscall1(SYS_MMAP, size);}

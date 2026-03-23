@@ -10,7 +10,7 @@
 
 #define KEYBOARD_BUFFER_SIZE 128
 
-#define KEY_ESCAPE      256
+#define KEY_ESCAPE      27
 #define KEY_BACKSPACE   257
 #define KEY_TAB         258
 #define KEY_ENTER       259

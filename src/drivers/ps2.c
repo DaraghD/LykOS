@@ -68,8 +68,10 @@ void keyboard_process(void) {
         continue;
       }
 
-      if (is_release)
+      if (is_release) {
+        extended = false;
         continue;
+      }
 
       u8 mods = 0;
       if (shift)
@@ -81,6 +83,10 @@ void keyboard_process(void) {
 
       if (extended) {
         extended = false;
+
+        if (is_release)
+          continue;
+
         switch (sc) {
         case 0x48:
           key = KEY_UP_ARROW;
@@ -102,9 +108,9 @@ void keyboard_process(void) {
 
         if (key == 0) {
           switch (sc) {
-          case 0x01:
-            key = KEY_ESCAPE;
-            break;
+          // case 0x01:
+          //   key = KEY_ESCAPE;
+          //   break;
           case 0x0E:
             key = KEY_BACKSPACE;
             break;
@@ -125,6 +131,9 @@ void keyboard_process(void) {
 
       u8 next = (key_event_head + 1) % KEYBOARD_BUFFER_SIZE;
       if (next != key_event_tail) {
+        if (key == KEY_ESCAPE)
+          terminal_fstring("ESCAPE");
+
         key_event_buffer[key_event_head] = (KeyEvent){key, mods};
         key_event_head = next;
       }

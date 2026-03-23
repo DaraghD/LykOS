@@ -275,8 +275,10 @@ void terminal_process_input(KeyEvent input) {
     }
     return;
   } else if (input.key == KEY_LEFT_ARROW) {
+    terminal_fstring("LEFT ARROW");
     return;
   } else if (input.key == KEY_RIGHT_ARROW) {
+    terminal_fstring("RIGHT ARROW");
     return;
   }
 

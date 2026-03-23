@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 // load elf into virt addr space
-bool load_elf(void *file, loaded_elf *out, u64 *pml4) {
+bool load_elf(Task *t, void *file, loaded_elf *out, u64 *pml4) {
   Elf64_Ehdr *hdr = (Elf64_Ehdr *)file;
   Elf64_Phdr *phdrs = (Elf64_Phdr *)((u8 *)file + hdr->e_phoff);
 
@@ -50,6 +50,8 @@ bool load_elf(void *file, loaded_elf *out, u64 *pml4) {
     }
 
     out->segments[out->segment_count++] = (void *)ph->p_vaddr;
+    u64 seg_end = ph->p_vaddr + (pages_needed * FRAME_SIZE);
+    add_vma(t, ph->p_vaddr, seg_end);
 
     serial_fstring(
         "Mapped segment {uint}: vaddr=0x{hex}, memsz={uint}, pages={uint}\n", i,

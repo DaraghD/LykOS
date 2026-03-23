@@ -229,6 +229,9 @@ void debug_tasks(void) {
     // task_state_to_str(t->state),
     //                  t->slice);
     terminal_fstring("{str} \n", task_state_to_str(t->state));
+
+    if (t->is_elf)
+      debug_vmas(t);
   }
 }
 
@@ -273,16 +276,15 @@ int task_create_elf(const char *name, void *file) {
   int id = find_free_task_slot();
   if (id < 0)
     return -1;
+  Task *t = &tasks[id];
 
   u64 *proc_addr_space = create_address_space();
   if (!proc_addr_space)
     return -1;
 
   loaded_elf elf;
-  if (!load_elf(file, &elf, proc_addr_space))
+  if (!load_elf(t, file, &elf, proc_addr_space))
     return -1;
-
-  Task *t = &tasks[id];
 
   // kernel stack
   t->stack = kalloc(TASK_STACK_SIZE);
@@ -295,6 +297,8 @@ int task_create_elf(const char *name, void *file) {
     map_page(proc_addr_space, virt, virt_to_phys(frame),
              PTE_PRESENT | PTE_WRITE | PTE_USER);
   }
+  u64 stack_bottom = USER_STACK_TOP - (USER_STACK_PAGES * FRAME_SIZE);
+  add_vma(t, stack_bottom, USER_STACK_TOP);
 
   u64 sp = ((u64)t->stack + TASK_STACK_SIZE) & ~0xFULL;
   sp -= 8;

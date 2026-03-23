@@ -6,7 +6,7 @@
 #include "mem/mem.h"
 #include "proc/task.h"
 #include "terminal.h"
-#include "user/lykosapi.h"
+#include "user/syscalls.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -189,6 +189,9 @@ void isr_syscall(interrupt_frame *frame) {
     break;
   case 4:
     frame->rax = get_key_event(frame);
+    break;
+  case 5:
+    frame->rax = sys_mmap(frame);
     break;
   }
 }

@@ -350,3 +350,63 @@ void debug_cr3(void) {
   }
   serial_fstring("CR3 : 0x{hex}\n", cr3);
 }
+
+// adds virtual memory area of start -> end in Task t
+void add_vma(Task *t, u64 start, u64 end) {
+  VMA *v = kalloc(sizeof(VMA));
+  v->start = start;
+  v->end = end;
+
+  // Insert sorted by start address
+  VMA **pp = &t->vma_list;
+  while (*pp && (*pp)->start < start)
+    pp = &(*pp)->next;
+
+  v->next = *pp;
+  *pp = v;
+}
+
+void print_vma(VMA *vma) {
+  terminal_fstring("[0x{hex} - 0x{hex}] ", vma->start, vma->end);
+  terminal_fstring("Size: (KB){uint} | Pages: {uint}\n",
+                   TO_KB(vma->end - vma->start),
+                   (vma->end - vma->start) / FRAME_SIZE);
+
+  serial_fstring("[0x{hex} - 0x{hex}]\n", vma->start, vma->end);
+}
+void debug_vmas(Task *t) {
+  serial_fstring("VMAs for task '{str}':\n", t->name);
+  terminal_fstring("VMAs for task '{str}':\n", t->name);
+  VMA *v = t->vma_list;
+  while (v) {
+    print_vma(v);
+    v = v->next;
+  }
+}
+
+#define MMAP_REGION_START 0x10000000
+#define MMAP_REGION_END 0x1910000000
+
+u64 find_free_region(Task *t, u64 size) {
+  size = ALIGN_UP(size, PAGE_SIZE);
+
+  u64 candidate = MMAP_REGION_START;
+  VMA *next = t->vma_list;
+
+  while (next) {
+    if (candidate + size < next->start) {
+      return candidate;
+    }
+    if (next->end > candidate)
+      candidate = next->end;
+    next = next->next;
+  }
+
+  if (candidate + size <= MMAP_REGION_END)
+    return candidate;
+
+  serial_fstring(
+      "No space in virtual address space for MMAP task {uint} '{str}'\n",
+      current_task, t->name);
+  return 0;
+}

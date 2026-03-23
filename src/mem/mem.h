@@ -1,5 +1,6 @@
 #pragma once
 
+#include "proc/task.h"
 #include "req.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -46,7 +47,9 @@ u64 *create_address_space(void);
 void map_page(u64 *pml4, u64 virt_addr, u64 phys_addr, u64 flags);
 void switch_address_space(u64 *pml4);
 void debug_cr3(void);
-
+void add_vma(Task *t, u64 start, u64 end);
+void debug_vmas(Task *t);
+u64 find_free_region(Task *t, u64 size);
 static inline u64 virt_to_phys(void *virt) { return (u64)virt - hhdm_offset; }
 
 static inline void *phys_to_virt(u64 phys) {

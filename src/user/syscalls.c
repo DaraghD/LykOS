@@ -1,4 +1,4 @@
-#include "lykosapi.h"
+#include "user/syscalls.h"
 #include "arch/x86_64/idt.h"
 #include "drivers/ps2.h"
 #include "drivers/serial.h"
@@ -60,4 +60,29 @@ i64 get_key_event(interrupt_frame *frame) {
   *ev_ptr = key_event_buffer[key_event_tail];
   key_event_tail = (key_event_tail + 1) % KEYBOARD_BUFFER_SIZE;
   return 1;
+}
+
+// TODO: on demand allocation instead of doing it upfront, kernel stalls in
+// syscall if allocation is large
+u64 sys_mmap(interrupt_frame *frame) {
+  Task *t = &tasks[current_task];
+  u64 size = frame->rdi;
+
+  u64 addr = find_free_region(t, size);
+  if (addr == 0) {
+    serial_fstring("MMAP error\n");
+    return -1;
+  }
+
+  u64 pages = ALIGN_UP(size, PAGE_SIZE) / PAGE_SIZE;
+  for (u64 i = 0; i < pages; i++) {
+    void *frame = pmm_alloc_frame();
+    memset(frame, 0, FRAME_SIZE);
+    u64 virt = addr + (i * FRAME_SIZE);
+    map_page(phys_to_virt(t->user_cr3), virt, virt_to_phys(frame),
+             PTE_PRESENT | PTE_WRITE | PTE_USER);
+  }
+
+  add_vma(t, addr, addr + (pages * FRAME_SIZE));
+  return addr;
 }

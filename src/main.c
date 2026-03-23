@@ -15,7 +15,6 @@
 #include "shell.h"
 #include "terminal.h"
 #include "user/input.h"
-#include "user/lykosapi.h"
 #include "vendor/stb_ds.h"
 #include <stdint.h>
 

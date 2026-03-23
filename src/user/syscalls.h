@@ -1,6 +1,5 @@
 #pragma once
 #include "arch/x86_64/idt.h"
-#include "drivers/ps2.h"
 #include "req.h"
 
 
@@ -9,3 +8,4 @@ i64 sys_sleep(interrupt_frame *frame);
 i64 sys_write(interrupt_frame *frame);
 i64 map_fb(interrupt_frame *frame);
 i64 get_key_event(interrupt_frame *frame);
+u64 sys_mmap(interrupt_frame *frame);
