@@ -28,30 +28,39 @@ bool load_elf(Task *t, void *file, loaded_elf *out, u64 *pml4) {
     if (ph->p_type != PT_LOAD)
       continue;
 
-    u64 pages_needed = (ph->p_memsz + FRAME_SIZE - 1) / FRAME_SIZE;
+    // align start down to page boundary
+    u64 seg_start = ph->p_vaddr & ~(FRAME_SIZE - 1);
+    u64 seg_end = ph->p_vaddr + ph->p_memsz;
+    u64 pages_needed = (seg_end - seg_start + FRAME_SIZE - 1) / FRAME_SIZE;
 
     for (u64 p = 0; p < pages_needed; p++) {
       void *frame = pmm_alloc_frame(); // virtual addr
       memset(frame, 0, FRAME_SIZE);
 
       u64 phys = virt_to_phys(frame);
-      u64 virt = ph->p_vaddr + (p * FRAME_SIZE);
+      u64 virt = seg_start + (p * FRAME_SIZE);
 
       serial_fstring("p_vaddr = {uint}\n", ph->p_vaddr);
       map_page(pml4, virt, phys, PTE_PRESENT | PTE_WRITE | PTE_USER);
 
-      u64 offset_in_segment = p * FRAME_SIZE;
-      if (offset_in_segment < ph->p_filesz) {
-        u64 copy_size = ph->p_filesz - offset_in_segment;
-        if (copy_size > FRAME_SIZE)
-          copy_size = FRAME_SIZE;
-        memcpy(frame, (u8 *)file + ph->p_offset + offset_in_segment, copy_size);
+      // figure out overlap between this page and the file
+      u64 page_start = virt;
+      u64 page_end = virt + FRAME_SIZE;
+
+      u64 file_start = ph->p_vaddr;
+      u64 file_end = ph->p_vaddr + ph->p_filesz;
+
+      if (page_start < file_end && page_end > file_start) {
+        u64 start = (page_start > file_start) ? page_start : file_start;
+        u64 end = (page_end < file_end) ? page_end : file_end;
+
+        memcpy((u8 *)frame + (start - page_start),
+               (u8 *)file + ph->p_offset + (start - file_start), end - start);
       }
     }
 
     out->segments[out->segment_count++] = (void *)ph->p_vaddr;
-    u64 seg_end = ph->p_vaddr + (pages_needed * FRAME_SIZE);
-    add_vma(t, ph->p_vaddr, seg_end);
+    add_vma(t, seg_start, seg_start + (pages_needed * FRAME_SIZE));
 
     serial_fstring(
         "Mapped segment {uint}: vaddr=0x{hex}, memsz={uint}, pages={uint}\n", i,
