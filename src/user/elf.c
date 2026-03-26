@@ -25,6 +25,10 @@ bool load_elf(Task *t, void *file, loaded_elf *out, u64 *pml4) {
 
   for (int i = 0; i < hdr->e_phnum; i++) {
     Elf64_Phdr *ph = &phdrs[i];
+    // TODO: Thread local storage
+    // if (ph->p_type == PT_TLS) {
+    //   ph->
+    // }
     if (ph->p_type != PT_LOAD)
       continue;
 

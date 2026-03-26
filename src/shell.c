@@ -14,6 +14,7 @@
 // #define STBDS_REALLOC(context, ptr, size) krealloc(ptr, size)
 // #define STBDS_FREE(context, ptr) kfree(ptr)
 #include "terminal.h"
+#include "user/exec.h"
 #include "user/input.h"
 #include "vendor/stb_ds.h"
 #include <stdbool.h>
@@ -153,28 +154,9 @@ void shell_execute(kstring *line) {
     kstring path = args.args[0];
     cat_file(&path);
 
-  }
-
-  else if (kstrncmp(line, "cat", 3)) {
-    if (!parse_args(line, &args)) {
-      terminal_fstring("File needed to cat\n");
-      goto skip_history;
-    }
-
   } else if (kstrncmp(line, "exec", 4)) {
     if (!parse_args(line, &args)) {
       terminal_fstring("File needed to exec\n");
-      goto skip_history;
-    }
-
-    kstring path = args.args[0];
-    u64 size = 0;
-    void *file = read_file(&path, &size);
-    serial_fstring("Exec elf : {kstr}", &path);
-
-    if (file == NULL) {
-      serial_fstring("cant find file?");
-      terminal_fstring("Can't find file\n");
       goto skip_history;
     }
 
@@ -182,18 +164,25 @@ void shell_execute(kstring *line) {
     // track for freeing it, can't create the name on the stack since it will be
     // invalid as task lives longer than this stack frame, for now its just
     // leaked
+    kstring path = args.args[0];
     char *name_buf = kalloc(path.len + 1);
     memcpy(name_buf, path.buf, path.len);
     name_buf[path.len] = '\0';
 
-    int ret = task_create_elf(name_buf, file);
-    if (ret < 0)
+    i64 ret = exec(name_buf);
+    if (ret == -1) {
+      terminal_fstring("Could not find file\n");
+      goto skip_history;
+    } else if (ret == -2) {
       terminal_fstring("Could not exec file\n");
-    current_input_target = USERSPACE;
-    while (tasks[ret].state != TASK_DEAD) {
-      yield();
+      goto skip_history;
+    } else {
+      current_input_target = USERSPACE;
+      while (tasks[ret].state != TASK_DEAD) {
+        yield();
+      }
+      current_input_target = KERNEL_TERMINAL;
     }
-    current_input_target = KERNEL_TERMINAL;
   }
 
   else if (kstrncmp(line, "ascii", 5))

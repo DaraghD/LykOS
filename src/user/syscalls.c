@@ -6,6 +6,8 @@
 #include "mem/mem.h"
 #include "proc/task.h"
 #include "terminal.h"
+#include "user/exec.h"
+#include "user/input.h"
 
 i64 sys_exit(interrupt_frame *frame) {
   // TODO: use frame for reason why sys exit e.g success failure etc
@@ -28,7 +30,7 @@ i64 sys_write(interrupt_frame *frame) {
   return 1;
 }
 
-i64 map_fb(interrupt_frame *frame) {
+u64 map_fb(interrupt_frame *frame) {
   (void)frame;
   u64 fb_vaddr = 0xFB000000;
   limine_framebuffer fb = *get_framebuffer();
@@ -71,7 +73,7 @@ u64 sys_mmap(interrupt_frame *frame) {
   u64 addr = find_free_region(t, size);
   if (addr == 0) {
     serial_fstring("MMAP error\n");
-    return -1;
+    return 0;
   }
 
   u64 pages = ALIGN_UP(size, PAGE_SIZE) / PAGE_SIZE;
@@ -85,4 +87,30 @@ u64 sys_mmap(interrupt_frame *frame) {
 
   add_vma(t, addr, addr + (pages * FRAME_SIZE));
   return addr;
+}
+
+u64 map_key_events(interrupt_frame *frame) {
+  (void)frame;
+  Task *t = &tasks[current_task];
+  u64 proc_cr3 = t->user_cr3;
+
+  u64 addr = (u64)key_event_buffer;
+  u64 buf_size = KEYBOARD_BUFFER_SIZE * sizeof(KeyEvent);
+
+  u64 pages_needed = ALIGN_UP(buf_size, PAGE_SIZE) / PAGE_SIZE;
+
+  u64 flags = PTE_PRESENT | PTE_WRITE | PTE_USER;
+
+  for (uint64_t i = 0; i < pages_needed; i++) {
+    uint64_t offset = i * PAGE_SIZE;
+  }
+
+  add_vma(t, addr, addr + (pages_needed * FRAME_SIZE));
+  return 1;
+}
+
+i64 sys_exec(interrupt_frame *frame) {
+  char *file_name = (char *)frame->rdi;
+  i64 ret = exec(file_name);
+  return ret;
 }

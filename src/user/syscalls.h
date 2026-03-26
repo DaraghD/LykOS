@@ -6,6 +6,7 @@
 i64 sys_exit(interrupt_frame *frame);
 i64 sys_sleep(interrupt_frame *frame);
 i64 sys_write(interrupt_frame *frame);
-i64 map_fb(interrupt_frame *frame);
+u64 map_fb(interrupt_frame *frame);
 i64 get_key_event(interrupt_frame *frame);
 u64 sys_mmap(interrupt_frame *frame);
+i64 sys_exec(interrupt_frame *frame);

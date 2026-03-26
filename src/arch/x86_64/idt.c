@@ -193,5 +193,8 @@ void isr_syscall(interrupt_frame *frame) {
   case 5:
     frame->rax = sys_mmap(frame);
     break;
+  case 6:
+    frame->rax = sys_exec(frame);
+    break;
   }
 }

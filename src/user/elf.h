@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #define PT_LOAD 1
+#define PT_TLS 7
 #define EI_MAG0 0
 #define EI_MAG1 1
 #define EI_MAG2 2

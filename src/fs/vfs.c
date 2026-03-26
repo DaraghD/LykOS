@@ -72,7 +72,6 @@ void list_files(kstring *path) {
 void *read_file(kstring *path, u64 *out_size) {
   to_upper(path);
 
-  serial_fstring("\ntrying to cat: {kstr}\n", path);
   fat16_dir_entry_t *files = kalloc(100 * sizeof(fat16_dir_entry_t));
   u32 file_count = fat16_get_entries(files);
 

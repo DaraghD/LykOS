@@ -2,6 +2,7 @@
 #include "arch/x86_64/gdt.h"
 #include "drivers/pit.h"
 #include "drivers/serial.h"
+#include "klib/kstring.h"
 #include "klib/time.h"
 #include "mem/kalloc.h"
 #include "mem/mem.h"
@@ -159,8 +160,11 @@ __attribute__((noreturn)) void task_exit(void) {
   t->state = TASK_DEAD;
 
   // TODO: proper cleanup later need to walk the addr space
+  // Things to free: VMAs, ELF segments,stacks, pages mapped into its addr space
+  // task name
 
   kfree(t->stack);
+  kfree((void *)t->name);
   serial_writeln("task_exit: about to yield");
   asm volatile("sti");
   yield();
@@ -273,6 +277,10 @@ void wake_sleeping_tasks(void) {
 }
 
 int task_create_elf(const char *name, void *file) {
+  // ptr from userspace is unreliable
+  char *name_cpy = kalloc(strlen(name) + 1);
+  memcpy(name_cpy, name, strlen(name) + 1);
+
   int id = find_free_task_slot();
   if (id < 0)
     return -1;
@@ -316,7 +324,7 @@ int task_create_elf(const char *name, void *file) {
 
   t->state = TASK_READY;
   t->slice = TASK_SLICE_DEFAULT;
-  t->name = name;
+  t->name = name_cpy;
   t->wakeup_tick = 0;
   t->start_tick = pit_get_ticks();
   t->segment_count = elf.segment_count;
